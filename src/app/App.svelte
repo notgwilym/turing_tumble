@@ -1,16 +1,14 @@
 <script lang="ts">
     import type { Engine } from '../engine';
     export let engine: Engine;
-    export let count: number = 0;
 
-    function increment() {
-        count = engine.increment();
+    function print() {
+        engine.printState();
     }
 
 </script>
 
 <main>
     <h1>Hello, Svelte + TypeScript + Engine</h1>
-    <p>Counter: {count}</p>
-    <button on:click={increment}>Increment</button>
+    <button on:click={print}>Print State</button>
 </main>

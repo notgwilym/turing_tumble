@@ -1,21 +1,17 @@
+import { Board } from "./Board";
+
 export class Engine {
-  private counter = 0;
-
+  private board: Board;
   constructor() {
-    console.log("Engine initialized!");
+    this.board = new Board();
   }
 
-  increment(): number {
-    this.counter++;
-    console.log(`Engine counter: ${this.counter}`);
-    return this.counter;
-  }
-
-  reset(): void {
-    this.counter = 0;
+  printState(): void {
+    console.log("Current Engine State:");
+    console.log(this.state);
   }
 
   get state() {
-    return { counter: this.counter };
+    return { board: this.board };
   }
 }
