@@ -22,7 +22,9 @@ export class Board {
         }
 
         const grid: CellType[][] = [];
-        for (let y = 0; y < height; y++) {
+
+        // create checkerboard pattern of Peg and SlotPeg
+        for (let y = 0; y < height - 1; y++) {
             const row: CellType[] = [];
             for (let x = 0; x < width; x++) {
                 let x_even = x % 2 === 0;
@@ -35,6 +37,46 @@ export class Board {
             }
             grid.push(row);
         }
+
+        // remove top corners
+        grid[0][0] = CellType.Blank;
+        grid[0][1] = CellType.Blank;
+        grid[1][0] = CellType.Blank;
+
+        grid[0][width - 1] = CellType.Blank;
+        grid[0][width - 2] = CellType.Blank;
+        grid[1][width - 1] = CellType.Blank;
+
+        // remove upper middle peg
+        const mid_x = Math.floor(width / 2);
+        grid[0][mid_x] = CellType.Blank;
+
+        // add bottom row
+        const bottomRow: CellType[] = [];
+        for (let x = 0; x < width; x++) {
+            if (x < mid_x) {
+                bottomRow.push(CellType.LeftExit);
+            } else if (x > mid_x) {
+                bottomRow.push(CellType.RightExit);
+            } else {
+                bottomRow.push(CellType.SlotPeg);
+            }
+        }
+        grid.push(bottomRow);
+
+        // add exit row for middle slot peg
+        const exitRow: CellType[] = [];
+        for (let x = 0; x < width; x++) {
+            if (x === mid_x - 1) {
+                exitRow.push(CellType.LeftExit);
+            } else if (x === mid_x + 1) {
+                exitRow.push(CellType.RightExit);
+            } else {
+                exitRow.push(CellType.Blank);
+            }
+        }
+        grid.push(exitRow);
+
         return grid;
     }
 }
