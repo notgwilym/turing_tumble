@@ -1,18 +1,20 @@
-import type { FlippablePiece } from "./Piece";
+import { FlippablePiece } from "./Piece";
+import { Orientation } from "./Piece";
+import type { Ball } from "../Ball";
 
-export class Ramp implements FlippablePiece {
-    x: number
-    y: number;
+export class Ramp extends FlippablePiece {
 
-    orientation: 'left' | 'right';
-
-    constructor(x: number, y: number, orientation: 'left' | 'right') {
-        this.x = x;
-        this.y = y;
-        this.orientation = orientation;
+    constructor(x: number, y: number, orientation: Orientation) {
+        super(x, y, orientation);
     }
 
-    handleBall(): void {
+    handleBall(ball : Ball): void {
         // move ball down and left or right based on orientation
+        if (this.orientation === Orientation.Left) {
+            ball.moveTo(this.x - 1, this.y + 1);
+        }
+        else {
+            ball.moveTo(this.x + 1, this.y + 1);
+        }
     }
 }

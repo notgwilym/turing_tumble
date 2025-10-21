@@ -1,12 +1,24 @@
 import type { Ball } from "../Ball";
 
-export interface Piece {
-    x: number
-    y: number;
-
-    handleBall(ball: Ball): void;
+export abstract class Piece {
+  constructor(public x: number, public y: number) {}
+  abstract handleBall(ball: Ball): void;
 }
 
-export interface FlippablePiece extends Piece {
-    orientation: 'left' | 'right';
+export enum Orientation {
+  Left,
+  Right,
+}
+
+export abstract class FlippablePiece extends Piece {
+  constructor(x: number, y: number, public orientation: Orientation) {
+    super(x, y);
+  }
+
+  flip() {
+    this.orientation =
+      this.orientation === Orientation.Left
+        ? Orientation.Right
+        : Orientation.Left;
+  }
 }

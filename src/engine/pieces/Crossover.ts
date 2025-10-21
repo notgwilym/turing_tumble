@@ -1,13 +1,9 @@
-import type { Piece } from "./Piece";
+import { Piece } from "./Piece";
 import type { Ball } from "../Ball";
 
-export class Ramp implements Piece {
-    x: number
-    y: number;
-
+export class Crossover extends Piece {
     constructor(x: number, y: number) {
-        this.x = x;
-        this.y = y;
+        super(x, y);
     }
 
     handleBall(ball: Ball): void {
@@ -19,8 +15,8 @@ export class Ramp implements Piece {
             ball.moveTo(this.x - 1, this.y + 1);
         }
         else {
-            // ball came from above, default to right
-            ball.moveTo(this.x + 1, this.y + 1);
+            // raise error
+            throw new Error("Ball approached crossover from invalid direction");
         }
     }
 }
