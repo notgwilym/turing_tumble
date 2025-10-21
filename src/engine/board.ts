@@ -1,3 +1,6 @@
+import { Crossover } from "./pieces/Crossover";
+import { Ramp } from "./pieces/Ramp";
+
 enum CellType {
     Blank, 
     Peg,    // used for cogs
@@ -6,11 +9,15 @@ enum CellType {
     LeftExit,
 }
 
+type PieceType = Crossover | Ramp;
+
 export class Board {
     private grid: CellType[][];
+    private pieceGrid : (PieceType | null)[][];
 
     constructor(width?: number, height?: number) {
         this.grid = this.createGrid(width ?? 11, height ?? 11);
+        this.pieceGrid = this.createPieceGrid(width ?? 11, height ?? 11);
     }
 
     private createGrid(width: number, height: number) : CellType[][] {
@@ -78,5 +85,25 @@ export class Board {
         grid.push(exitRow);
 
         return grid;
+    }
+
+    private getCellType(x: number, y: number): CellType {
+        return this.grid[y][x];
+    }
+
+    private createPieceGrid(width: number, height: number) : (PieceType | null)[][] {
+        const pieceGrid: (PieceType | null)[][] = [];
+        for (let y = 0; y < height; y++) {
+            const row: (PieceType | null)[] = [];
+            for (let x = 0; x < width; x++) {
+                row.push(null);
+            }
+            pieceGrid.push(row);
+        }
+        return pieceGrid;
+    }
+
+    public placePiece(piece: PieceType): void {
+        this.pieceGrid[piece.y][piece.x] = piece;
     }
 }
