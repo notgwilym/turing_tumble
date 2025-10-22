@@ -1,9 +1,9 @@
 <script lang="ts">
-    import type { Engine } from '../engine';
-    export let engine: Engine;
+    import { Engine } from '../engine/Engine';
+    let default_engine = new Engine();
 
     function print() {
-        engine.printState();
+        default_engine.printBoardState();
     }
 
 </script>
