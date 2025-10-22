@@ -4,13 +4,20 @@ export class Ball {
     y: number;
     prev_x: number;
     prev_y: number;
-    
-    constructor(colour: 'red' | 'blue', x: number, y: number) {
+
+    constructor(colour: 'red' | 'blue') {
         this.colour = colour;
-        this.x = x;
-        this.y = y;
-        this.prev_x = x;
-        this.prev_y = y;
+        this.x = -1;
+        this.y = -1;
+        if (colour === 'red') {
+            this.prev_x = -1;
+            this.prev_y = -1;
+        } else if (colour === 'blue') {
+            this.prev_x = 99999;    
+            this.prev_y = -1;
+        } else {
+            throw new Error("Invalid ball colour");
+        }
     }
 
     moveTo(newX: number, newY: number) {
