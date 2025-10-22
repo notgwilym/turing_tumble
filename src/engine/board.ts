@@ -1,3 +1,4 @@
+import { Piece } from "./pieces/Piece";
 import { Crossover } from "./pieces/Crossover";
 import { Ramp } from "./pieces/Ramp";
 
@@ -9,15 +10,22 @@ enum CellType {
     LeftExit,
 }
 
-type PieceType = Crossover | Ramp;
-
 export class Board {
     private grid: CellType[][];
-    private pieceGrid : (PieceType | null)[][];
+    private pieceGrid : (Piece | null)[][];
 
     constructor(width?: number, height?: number) {
         this.grid = this.createGrid(width ?? 11, height ?? 11);
         this.pieceGrid = this.createPieceGrid(width ?? 11, height ?? 11);
+    }
+
+    public placePiece(piece: Piece): void {
+        if (piece instanceof Crossover || piece instanceof Ramp) { // extend as more pieces added
+            if (this.grid[piece.y][piece.x] !== CellType.SlotPeg) {
+                throw new Error("Cannot place piece here, not a SlotPeg");
+            }
+            this.pieceGrid[piece.y][piece.x] = piece;
+        }
     }
 
     private createGrid(width: number, height: number) : CellType[][] {
@@ -87,23 +95,15 @@ export class Board {
         return grid;
     }
 
-    private getCellType(x: number, y: number): CellType {
-        return this.grid[y][x];
-    }
-
-    private createPieceGrid(width: number, height: number) : (PieceType | null)[][] {
-        const pieceGrid: (PieceType | null)[][] = [];
+    private createPieceGrid(width: number, height: number) : (Piece | null)[][] {
+        const pieceGrid: (Piece | null)[][] = [];
         for (let y = 0; y < height; y++) {
-            const row: (PieceType | null)[] = [];
+            const row: (Piece | null)[] = [];
             for (let x = 0; x < width; x++) {
                 row.push(null);
             }
             pieceGrid.push(row);
         }
         return pieceGrid;
-    }
-
-    public placePiece(piece: PieceType): void {
-        this.pieceGrid[piece.y][piece.x] = piece;
     }
 }
