@@ -1,8 +1,9 @@
 import { Piece } from "./pieces/Piece";
 import { Crossover } from "./pieces/Crossover";
 import { Ramp } from "./pieces/Ramp";
+import { Interceptor } from "./pieces/Interceptor";
 
-enum CellType {
+export enum CellType {
     Blank, 
     Peg,    // used for cogs
     SlotPeg, // used for all other pieces 
@@ -13,19 +14,57 @@ enum CellType {
 export class Board {
     private grid: CellType[][];
     private pieceGrid : (Piece | null)[][];
+    private startSide: 'left' | 'right';
+    private leftEntryX: number;
+    private rightEntryX: number;
 
-    constructor(width?: number, height?: number) {
+    constructor(width?: number, height?: number, startSide: 'left' | 'right' = 'left', leftEntryX?: number, rightEntryX?: number) {
         this.grid = this.createGrid(width ?? 11, height ?? 11);
         this.pieceGrid = this.createPieceGrid(width ?? 11, height ?? 11);
+        this.startSide = startSide;
+        this.leftEntryX = leftEntryX ?? 3;
+        this.rightEntryX = rightEntryX ?? (width ?? 11) - 4;
     }
 
     public placePiece(piece: Piece): void {
-        if (piece instanceof Crossover || piece instanceof Ramp) { // extend as more pieces added
+        if (piece instanceof Crossover || piece instanceof Ramp || piece instanceof Interceptor) { // extend as more pieces added
             if (this.grid[piece.y][piece.x] !== CellType.SlotPeg) {
                 throw new Error("Cannot place piece here, not a SlotPeg");
             }
             this.pieceGrid[piece.y][piece.x] = piece;
         }
+    }
+
+    public getGrid(): CellType[][] {
+        return this.grid;
+    }
+
+    public getPieceGrid(): (Piece | null)[][] {
+        return this.pieceGrid;
+    }
+
+    public getCellType(x: number, y: number): CellType {
+        return this.grid[y][x];
+    }
+
+    public getPieceAt(x: number, y: number): Piece | null {
+        if (this.isInBounds(x, y)) {
+            return this.pieceGrid[y][x];
+        } else {
+            throw new Error(`Coordinates ${x}, ${y} out of bounds`);
+        }
+    }
+
+    public getStartSide(): 'left' | 'right' {
+        return this.startSide;
+    }
+
+    public getLeftEntryX(): number {
+        return this.leftEntryX;
+    }
+    
+    public getRightEntryX(): number {
+        return this.rightEntryX;
     }
 
     private createGrid(width: number, height: number) : CellType[][] {
@@ -97,7 +136,7 @@ export class Board {
 
     private createPieceGrid(width: number, height: number) : (Piece | null)[][] {
         const pieceGrid: (Piece | null)[][] = [];
-        for (let y = 0; y < height; y++) {
+        for (let y = 0; y < height + 1; y++) {
             const row: (Piece | null)[] = [];
             for (let x = 0; x < width; x++) {
                 row.push(null);
@@ -105,5 +144,9 @@ export class Board {
             pieceGrid.push(row);
         }
         return pieceGrid;
+    }
+
+    private isInBounds(x: number, y: number): boolean {
+        return y >= 0 && y < this.pieceGrid.length && x >= 0 && x < this.pieceGrid[0].length;
     }
 }
