@@ -4,7 +4,7 @@ Created for Gwilym's Computer Science BSc individual project.
 
 # Documentation
 
-Engine State System (not yet implemented)
+Engine State System
 Inspired by game state flow of Zachtronics' game *Opus Magnum*, although this is a common pattern in computation puzzles.
 
 States 
