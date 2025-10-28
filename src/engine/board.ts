@@ -2,6 +2,7 @@ import { Piece } from "./pieces/Piece";
 import { Crossover } from "./pieces/Crossover";
 import { Ramp } from "./pieces/Ramp";
 import { Interceptor } from "./pieces/Interceptor";
+import { Bit } from "./pieces/Bit";
 
 export enum CellType {
     Blank, 
@@ -27,7 +28,7 @@ export class Board {
     }
 
     public placePiece(piece: Piece): void {
-        if (piece instanceof Crossover || piece instanceof Ramp || piece instanceof Interceptor) { // extend as more pieces added
+        if (piece instanceof Crossover || piece instanceof Ramp || piece instanceof Interceptor || piece instanceof Bit) { // extend as more pieces added
             if (this.grid[piece.y][piece.x] !== CellType.SlotPeg) {
                 throw new Error("Cannot place piece here, not a SlotPeg");
             }

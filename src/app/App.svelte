@@ -2,11 +2,13 @@
     import { Engine } from '../engine/Engine';
 
     import { Orientation } from '../engine/pieces/Piece';
+    import { Bit } from '../engine/pieces/Bit';
     import { Ramp } from '../engine/pieces/Ramp';
     import { Crossover } from '../engine/pieces/Crossover';
+    import { Interceptor } from '../engine/pieces/Interceptor';
 
     let default_engine = new Engine();
-    default_engine.addPiece(new Ramp(3 , 0, Orientation.Right));
+    default_engine.addPiece(new Bit (3, 0, Orientation.Right));
     default_engine.addPiece(new Ramp(4 , 1, Orientation.Left));
     default_engine.addPiece(new Crossover(3 , 2));
     default_engine.addPiece(new Ramp(2 , 3, Orientation.Left));
@@ -16,6 +18,22 @@
     default_engine.addPiece(new Ramp(0 , 7, Orientation.Right));
     default_engine.addPiece(new Ramp(1 , 8, Orientation.Right));
     default_engine.addPiece(new Ramp(2 , 9, Orientation.Left));
+
+    default_engine.addPiece(new Ramp(2, 1 , Orientation.Right));
+    default_engine.addPiece(new Crossover(4, 3));
+    default_engine.addPiece(new Ramp(5 , 4, Orientation.Right));
+    default_engine.addPiece(new Ramp(6 , 5, Orientation.Right));
+    default_engine.addPiece(new Ramp(7 , 6, Orientation.Left));
+    default_engine.addPiece(new Ramp(6 , 7, Orientation.Right));
+    default_engine.addPiece(new Ramp(7 , 8, Orientation.Left));
+    default_engine.addPiece(new Ramp(6 , 9, Orientation.Right));
+
+    default_engine.addPiece(new Bit (7, 0, Orientation.Left));
+    default_engine.addPiece(new Ramp (6, 1, Orientation.Left));
+    default_engine.addPiece(new Ramp (5, 2, Orientation.Left));
+    default_engine.addPiece(new Ramp (3, 4, Orientation.Left));
+
+    default_engine.addPiece(new Interceptor(8, 1));
 
     // reactive counter to trigger re-render
     let updateCounter = $state(0);

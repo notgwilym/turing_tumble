@@ -1,8 +1,8 @@
-import { FlippablePiece, Orientation} from "./Piece";
+import { FlippablePiece, Orientation } from "./Piece";
 import type { Ball } from "../Ball";
 
-export class Ramp extends FlippablePiece {
-
+export class Bit extends FlippablePiece {
+    
     constructor(x: number, y: number, orientation: Orientation) {
         super(x, y, orientation);
     }
@@ -15,5 +15,6 @@ export class Ramp extends FlippablePiece {
         else {
             ball.moveTo(this.x + 1, this.y + 1);
         }
+        this.flip();
     }
 }
