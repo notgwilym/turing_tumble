@@ -1,6 +1,6 @@
 import { Board, CellType } from "./Board";
 import { Ball } from "./Ball";
-import { Piece } from "./pieces/Piece";
+import { FlippablePiece, Piece } from "./pieces/Piece";
 import { Interceptor } from "./pieces/Interceptor";
 
 enum EngineState {
@@ -76,9 +76,9 @@ export class Engine {
     // current tick
     state += `Current Tick: ${this.currentTick}\n`;
     // left start queue
-    state += `Left Start Queue: [${this.leftStartQueue.map((ball) => ball.colour).join(", ")}]\n`;
+    state += `Left Start Queue: [${this.leftStartQueue.length}]\n`;
     // right start queue
-    state += `Right Start Queue: [${this.rightStartQueue.map((ball) => ball.colour).join(", ")}]\n`;
+    state += `Right Start Queue: [${this.rightStartQueue.length}]\n`;
     // board
     state += `Board: \n`;
     
@@ -94,24 +94,40 @@ export class Engine {
         }
         else if (cellType === CellType.SlotPeg) {
           if (piece) {
-            if (this.activeBalls.length == 1 && this.activeBalls[0].x === x && this.activeBalls[0].y === y) {
-              row += `[${piece.constructor.name.charAt(0)} ${this.activeBalls[0].colour.charAt(0).toUpperCase()}] `;
+            row += `[${piece.constructor.name.charAt(0)}`;
+            if (piece instanceof FlippablePiece) {
+              row += piece.orientation === 0 ? "<" : ">";
             } else {
-              row += `[${piece.constructor.name.charAt(0)}  ] `;
+              row += " ";
+            }
+            if (this.activeBalls.length == 1 && this.activeBalls[0].x === x && this.activeBalls[0].y === y) {
+              row += `${this.activeBalls[0].colour.charAt(0)}] `;
+            } else {
+              row += ` ] `;
             }
           } else {
             row += "[ _ ] ";
           }
         }
         else if (cellType === CellType.LeftExit) {
-          row += "[<- ] ";
+          if (this.activeBalls.length == 1 && this.activeBalls[0].x === x && this.activeBalls[0].y === y) {
+              row += `[<-${this.activeBalls[0].colour.charAt(0)}] `;
+            } else {
+              row += "[<- ] ";
+            }
         }
         else if (cellType === CellType.RightExit) {
-          row += "[ ->] ";
+          if (this.activeBalls.length == 1 && this.activeBalls[0].x === x && this.activeBalls[0].y === y) {
+            row += `[->${this.activeBalls[0].colour.charAt(0)}] `;
+          } else {
+            row += "[-> ] ";
+          }
         }
       }
       state += row + "\n";
     }
+
+    state += `Finished Balls: [${this.finishedBalls.map(b => b.colour).join(", ")}]\n`;
     
     return state;
   }
