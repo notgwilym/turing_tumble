@@ -23,6 +23,8 @@
         rightQueueCount: 0,
         activeBalls: [] as Ball[],
         finishedBalls: [] as Ball[],
+
+        stateString: '',
         
         // ui-only state
     });
@@ -54,13 +56,13 @@
         
         gameState.activeBalls = engine.getActiveBalls();
         gameState.finishedBalls = engine.getFinishedBalls();
+
+        gameState.stateString = engine.getStateString();
     }
 
     function step() {
         engine.step();
     }
-
-    let stateString = $derived(engine.getStateString());
 
     function setupDefaultPuzzle() {
         engine.addPiece(new Bit(3, 0, Orientation.Right));
@@ -108,10 +110,10 @@
     </div>
 
     <div class="state-display">
-        <pre>{stateString}</pre>
+        <pre>{gameState.stateString}</pre>
     </div>
 
-    
+
 </main>
 
 <style>
