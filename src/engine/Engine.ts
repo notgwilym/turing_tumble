@@ -62,11 +62,131 @@ export class Engine {
   private activeBalls: Ball[] = [];
   private finishedBalls: Ball[] = [];
 
+  // for event system
+  private listeners = new Set<() => void>();
+
   constructor(redBallsAmount: number = 20, blueBallsAmount: number = 20) {
     this.board = new Board();
     this.leftStartQueue = this.populateStartQueue('red', redBallsAmount);
     this.rightStartQueue = this.populateStartQueue('blue', blueBallsAmount);
     this.transition(StateTransition.INIT_DONE);
+  }
+
+  // subscribe to engine state changes
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    // return unsubscribe function
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notify(): void {
+    this.listeners.forEach(fn => fn());
+  }
+
+  public getCurrentTick(): number {
+    return this.currentTick;
+  }
+
+  public getState(): EngineState {
+    return this.state;
+  }
+
+  public getActiveBalls(): Ball[] {
+    return [...this.activeBalls];
+  }
+
+  public getFinishedBalls(): Ball[] {
+    return [...this.finishedBalls];
+  }
+
+  public getQueueCounts(): { left: number; right: number } {
+    return {
+      left: this.leftStartQueue.length,
+      right: this.rightStartQueue.length,
+    };
+  }
+
+  public getBoard(): Board {
+    return this.board;
+  }
+
+  public addPiece (piece: Piece) {
+    if (this.state !== EngineState.SETUP) {
+      throw new Error("Can only add pieces in SETUP state");
+    }
+    this.board.placePiece(piece);
+    this.notify();
+  }
+
+  // remove piece
+
+  // play
+
+  public step() {
+    this.transition(StateTransition.STEP);
+    // process one tick
+    this.tick();
+    this.notify();
+  }
+
+  // process game logic for one tick
+  private tick() {
+    if (this.state !== EngineState.RUNNING && this.state !== EngineState.FROZEN) {
+      throw new Error("Can only process tick in RUNNING or FROZEN state");
+    }
+
+    if (this.currentTick === 0) {
+      // introduce first ball
+      this.dropBall(this.board.getStartSide());
+      this.currentTick += 1;
+      return;
+    }
+
+    if (this.activeBalls.length != 1 ) {
+      throw new Error("No single active ball to process in tick.");
+    }
+    let currentBall = this.activeBalls[0];
+    let ballAtCellType = this.board.getCellType(currentBall.x, currentBall.y);
+
+    // if ball at a slotpeg, get the piece there and process interaction
+    if (ballAtCellType === CellType.SlotPeg) {
+      let pieceAtLocation = this.board.getPieceAt(currentBall.x, currentBall.y);
+      if (pieceAtLocation === null) {
+        throw new Error("No piece placed at slot where ball has reached.");
+      }
+      // sim terminates if ball hits interceptor
+      if (pieceAtLocation instanceof Interceptor) {
+        this.activeBalls.pop();
+        this.transition(StateTransition.TERMINAL_STATE);
+        return;
+      }
+
+      pieceAtLocation.handleBall(currentBall);
+    }
+    // else handle right and left exits
+    else if (ballAtCellType === CellType.RightExit) {
+      this.finishedBalls.push(this.activeBalls.pop()!);
+
+      let newBall = this.dropBall('right');
+      if (!newBall) {
+        this.transition(StateTransition.TERMINAL_STATE);
+      }
+    }
+    else if (ballAtCellType === CellType.LeftExit) {
+      this.finishedBalls.push(this.activeBalls.pop()!);
+
+      let newBall = this.dropBall('left');
+      if (!newBall) {
+        this.transition(StateTransition.TERMINAL_STATE);
+      }
+    }
+    else {
+      throw new Error("Ball is at invalid cell type.");
+    }
+
+    this.currentTick += 1;
   }
 
   public getStateString(): string {
@@ -130,85 +250,6 @@ export class Engine {
     state += `Finished Balls: [${this.finishedBalls.map(b => b.colour).join(", ")}]\n`;
     
     return state;
-  }
-
-  public getBoard(): Board {
-    return this.board;
-  }
-
-  public addPiece (piece: Piece) {
-    if (this.state !== EngineState.SETUP) {
-      throw new Error("Can only add pieces in SETUP state");
-    }
-    this.board.placePiece(piece);
-  }
-
-  // remove piece
-
-  // play
-
-  public step() {
-    this.transition(StateTransition.STEP);
-    // process one tick
-    this.tick();
-  }
-
-  // process game logic for one tick
-  private tick() {
-    if (this.state !== EngineState.RUNNING && this.state !== EngineState.FROZEN) {
-      throw new Error("Can only process tick in RUNNING or FROZEN state");
-    }
-
-    if (this.currentTick === 0) {
-      // introduce first ball
-      this.dropBall(this.board.getStartSide());
-      this.currentTick += 1;
-      return;
-    }
-
-    if (this.activeBalls.length != 1 ) {
-      throw new Error("No single active ball to process in tick.");
-    }
-    let currentBall = this.activeBalls[0];
-    let ballAtCellType = this.board.getCellType(currentBall.x, currentBall.y);
-
-    // if ball at a slotpeg, get the piece there and process interaction
-    if (ballAtCellType === CellType.SlotPeg) {
-      let pieceAtLocation = this.board.getPieceAt(currentBall.x, currentBall.y);
-      if (pieceAtLocation === null) {
-        throw new Error("No piece placed at slot where ball has reached.");
-      }
-      // sim terminates if ball hits interceptor
-      if (pieceAtLocation instanceof Interceptor) {
-        this.activeBalls.pop();
-        this.transition(StateTransition.TERMINAL_STATE);
-        return;
-      }
-
-      pieceAtLocation.handleBall(currentBall);
-    }
-    // else handle right and left exits
-    else if (ballAtCellType === CellType.RightExit) {
-      this.finishedBalls.push(this.activeBalls.pop()!);
-
-      let newBall = this.dropBall('right');
-      if (!newBall) {
-        this.transition(StateTransition.TERMINAL_STATE);
-      }
-    }
-    else if (ballAtCellType === CellType.LeftExit) {
-      this.finishedBalls.push(this.activeBalls.pop()!);
-
-      let newBall = this.dropBall('left');
-      if (!newBall) {
-        this.transition(StateTransition.TERMINAL_STATE);
-      }
-    }
-    else {
-      throw new Error("Ball is at invalid cell type.");
-    }
-
-    this.currentTick += 1;
   }
 
   private dropBall(side : 'left' | 'right'): Ball | undefined {
