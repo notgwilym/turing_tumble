@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 376 323" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;">
+    <g transform="matrix(1,0,0,1,-517.005,-1203.25)">
+        <g transform="matrix(1.01237,0,0,1.01237,-178.781,289.788)">
+            <g id="g2034" transform="matrix(4.16667,0,0,4.16667,-2377.33,-3372.82)">
+                <path id="path1947" d="M752,1042.52L796,1052.52C798.94,1053.12 802.008,1052.16 804.331,1050.26C806.653,1048.36 808,1045.52 808,1042.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,128,71);stroke-width:8px;"/>
+                <ellipse id="path1950" cx="780" cy="1070.52" rx="8" ry="8" style="fill:none;stroke:rgb(0,128,71);stroke-width:8px;stroke-linejoin:round;"/>
+                <path id="path1953" d="M776,1048.52L778,1062.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,128,71);stroke-width:8px;stroke-linecap:butt;"/>
+                <path id="path1955" d="M790,1052.52L785,1062.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,128,71);stroke-width:8px;stroke-linecap:butt;"/>
+                <ellipse id="path1950-0" cx="760" cy="1090.52" rx="8" ry="8" style="fill:none;stroke:rgb(0,128,71);stroke-width:8px;stroke-linejoin:round;"/>
+                <path id="path1972" d="M766,1084.52L774,1076.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,128,71);stroke-width:8px;stroke-linecap:butt;"/>
+                <path id="path1974" d="M786,1076.52L792,1082.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,128,71);stroke-width:8px;stroke-linejoin:round;"/>
+            </g>
+            <g id="g2034-6" transform="matrix(4.16667,0,0,4.16667,-2377.33,-3372.82)">
+                <path id="path1947-2" d="M752,1042.52L796,1052.52C798.94,1053.12 802.008,1052.16 804.331,1050.26C806.653,1048.36 808,1045.52 808,1042.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,200,111);stroke-width:2px;"/>
+                <ellipse id="path1950-6" cx="780" cy="1070.52" rx="8" ry="8" style="fill:none;stroke:rgb(0,200,111);stroke-width:2px;stroke-linejoin:round;"/>
+                <path id="path1953-1" d="M776,1048.52L778,1062.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,200,111);stroke-width:2px;stroke-linecap:butt;"/>
+                <path id="path1955-8" d="M790,1051.52L784,1063.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,200,111);stroke-width:2px;stroke-linecap:butt;"/>
+                <ellipse id="path1950-0-7" cx="760" cy="1090.52" rx="8" ry="8" style="fill:none;stroke:rgb(0,200,111);stroke-width:2px;stroke-linejoin:round;"/>
+                <path id="path1972-9" d="M766,1084.52L774,1076.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,200,111);stroke-width:2px;stroke-linecap:butt;"/>
+                <path id="path1974-2" d="M786,1076.52L792,1082.52" style="fill:none;fill-rule:nonzero;stroke:rgb(0,200,111);stroke-width:2px;stroke-linejoin:round;"/>
+            </g>
+        </g>
+    </g>
+</svg>
