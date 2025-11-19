@@ -3,6 +3,8 @@ import { Crossover } from "./pieces/Crossover";
 import { Ramp } from "./pieces/Ramp";
 import { Interceptor } from "./pieces/Interceptor";
 import { Bit } from "./pieces/Bit";
+import { Gear, NormalGear, GearBit, GearSetManager } from "./pieces/Gear";
+
 
 export enum CellType {
     Blank, 
@@ -19,12 +21,15 @@ export class Board {
     private leftEntryX: number;
     private rightEntryX: number;
 
+    private gearSetManager: GearSetManager;
+
     constructor(width?: number, height?: number, startSide: 'left' | 'right' = 'left', leftEntryX?: number, rightEntryX?: number) {
         this.grid = this.createGrid(width ?? 11, height ?? 11);
         this.pieceGrid = this.createPieceGrid(width ?? 11, height ?? 11);
         this.startSide = startSide;
         this.leftEntryX = leftEntryX ?? 3;
         this.rightEntryX = rightEntryX ?? (width ?? 11) - 4;
+        this.gearSetManager = new GearSetManager();
     }
 
     public placePiece(piece: Piece): void {
@@ -32,6 +37,38 @@ export class Board {
             if (this.grid[piece.y][piece.x] !== CellType.SlotPeg) {
                 throw new Error("Cannot place piece here, not a SlotPeg");
             }
+            this.pieceGrid[piece.y][piece.x] = piece;
+        } else if (piece instanceof Gear) { // gear placement
+            if (piece instanceof GearBit) {
+                if (this.grid[piece.y][piece.x] !== CellType.SlotPeg) {
+                    throw new Error("Cannot place GearBit here, not a SlotPeg");
+                }
+            } else if (piece instanceof NormalGear) {
+                if (!(this.grid[piece.y][piece.x] === CellType.Peg || this.grid[piece.y][piece.x] === CellType.SlotPeg)) {
+                    throw new Error("Cannot place NormalGear here, not a Peg or SlotPeg");
+                }
+            }
+
+            let adjacentGears: Gear[] = [];
+            const directions = [
+                [0, -1], // above
+                [0, 1],  // below
+                [-1, 0], // left
+                [1, 0],  // right
+            ];
+            
+            for (const [dx, dy] of directions) {
+                const nx = piece.x + dx;
+                const ny = piece.y + dy;
+                if (this.isInBounds(nx, ny)) {
+                    const adjacentPiece = this.pieceGrid[ny][nx];
+                    if (adjacentPiece instanceof Gear) {
+                        adjacentGears.push(adjacentPiece);
+                    }
+                }
+            }
+
+            this.gearSetManager.addGear(piece, adjacentGears);
             this.pieceGrid[piece.y][piece.x] = piece;
         }
     }
@@ -66,6 +103,10 @@ export class Board {
     
     public getRightEntryX(): number {
         return this.rightEntryX;
+    }
+
+    public getGearSetManager(): GearSetManager {
+        return this.gearSetManager;
     }
 
     private createGrid(width: number, height: number) : CellType[][] {

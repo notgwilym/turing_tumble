@@ -6,6 +6,7 @@
     import { Ramp } from '../engine/pieces/Ramp';
     import { Crossover } from '../engine/pieces/Crossover';
     import { Interceptor } from '../engine/pieces/Interceptor';
+    import { GearBit, NormalGear, GearRotation } from '../engine/pieces/Gear';
 
     import type { Ball } from '../engine/Ball';
     import type { Piece } from '../engine/pieces/Piece';
@@ -93,7 +94,38 @@
         engine.addPiece(new Interceptor(8, 1));
     }
 
-    setupDefaultPuzzle();
+    // setupDefaultPuzzle();
+
+    // gear system test setup
+
+    // engine.addPiece(new NormalGear(0, 5, GearRotation.Clockwise));
+    // engine.addPiece(new NormalGear(1, 5, GearRotation.Clockwise));
+    // engine.addPiece(new NormalGear(1, 4, GearRotation.Clockwise));
+    // engine.addPiece(new NormalGear(2, 4, GearRotation.Clockwise));
+    
+    // engine.addPiece(new NormalGear(2, 6, GearRotation.Clockwise));
+    // engine.addPiece(new NormalGear(2, 7, GearRotation.Clockwise));
+    // engine.addPiece(new NormalGear(2, 8, GearRotation.Clockwise));
+
+    // engine.addPiece(new NormalGear(2, 5, GearRotation.Clockwise));
+
+    engine.addPiece(new GearBit(3, 0, GearRotation.Counterclockwise));
+    engine.addPiece(new Ramp(4, 1, Orientation.Left));
+    engine.addPiece(new Crossover(3, 2));
+    engine.addPiece(new Ramp(2, 3, Orientation.Left));
+    engine.addPiece(new Ramp(1, 4, Orientation.Right));
+    engine.addPiece(new Ramp(2, 5, Orientation.Left));
+    engine.addPiece(new Crossover(1, 6));
+    engine.addPiece(new Ramp(0, 7, Orientation.Right));
+    engine.addPiece(new Ramp(1, 8, Orientation.Right));
+    engine.addPiece(new Ramp(2, 9, Orientation.Left));
+
+    
+    // let board = engine.getBoard();
+    // let gearSetManager = board.getGearSetManager();
+    // gearSetManager.turnGear(board.getPieceAt(0, 5) as NormalGear);
+
+    // console.log(gearSetManager.getAllSets());
 </script>
 
 <main>

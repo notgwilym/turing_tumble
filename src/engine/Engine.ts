@@ -2,6 +2,7 @@ import { Board, CellType } from "./Board";
 import { Ball } from "./Ball";
 import { FlippablePiece, Piece } from "./pieces/Piece";
 import { Interceptor } from "./pieces/Interceptor";
+import { Gear } from "./pieces/Gear";
 
 enum EngineState {
   INIT = 'INIT',
@@ -210,11 +211,22 @@ export class Engine {
         if (cellType === CellType.Blank) {
           row += "[   ] ";
         } else if (cellType === CellType.Peg) {
-          row += "[ . ] ";
+          if (piece) {
+            if (piece instanceof Gear) {
+              row += `[${piece.rotation === 0 ? "G" : "g"}  ] `;
+            }
+          }
+          else {
+            row += "[ . ] ";
+          }
         }
         else if (cellType === CellType.SlotPeg) {
           if (piece) {
-            row += `[${piece.constructor.name.charAt(0)}`;
+            if (piece instanceof Gear) {
+              row += `[${piece.rotation === 0 ? "G" : "g"}`;
+            } else {
+              row += `[${piece.constructor.name.charAt(0)}`;
+            }
             if (piece instanceof FlippablePiece) {
               row += piece.orientation === 0 ? "<" : ">";
             } else {
