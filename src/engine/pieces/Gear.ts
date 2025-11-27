@@ -138,7 +138,7 @@ export class GearSetManager {
       }
     }
 
-    if (!largestSetId || !referenceGear) {
+    if (largestSetId === null || !referenceGear) {
       // fallback to creating new set - should not happen
       this.createNewSet(newGear);
       return;
