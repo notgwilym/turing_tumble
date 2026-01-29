@@ -3,6 +3,12 @@ import type { Ball } from "../Ball";
 export abstract class Piece {
   constructor(public x: number, public y: number) {}
   abstract handleBall(ball: Ball): void;
+  clone(): this {
+    return Object.assign(
+      Object.create(Object.getPrototypeOf(this)),
+      this
+    );
+  }
 }
 
 export enum Orientation {

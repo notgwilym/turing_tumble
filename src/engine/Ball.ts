@@ -29,4 +29,13 @@ export class Ball {
         this.y = newY;
         console.log(`Ball moved to (${this.x}, ${this.y})`);
     }
+
+    clone(): Ball {
+        const newBall = new Ball(this.colour);
+        newBall.x = this.x;
+        newBall.y = this.y;
+        newBall.prev_x = this.prev_x;
+        newBall.prev_y = this.prev_y;
+        return newBall;
+    }
 }
