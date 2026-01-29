@@ -60,16 +60,6 @@
         -webkit-user-drag: none;
     }
     
-    /* Ball-specific effects */
-    .ball.red img {
-        filter: drop-shadow(0 2px 6px rgba(255, 0, 1, 0.5));
-    }
-    
-    .ball.blue img {
-        filter: drop-shadow(0 2px 6px rgba(0, 95, 255, 0.5));
-    }
-    
-    /* Optional: Add a bounce animation when ball appears */
     @keyframes bounce-in {
         0% { transform: translate(-50%, -50%) scale(0); }
         50% { transform: translate(-50%, -50%) scale(1.2); }
