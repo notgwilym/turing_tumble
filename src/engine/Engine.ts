@@ -43,7 +43,6 @@ const STATE_TRANSITIONS: TransitionMap = {
   [EngineState.FROZEN]: {
     [StateTransition.PLAY]: EngineState.RUNNING,
     [StateTransition.STOP]: EngineState.SETUP,
-    [StateTransition.STEP]: EngineState.FROZEN,
     [StateTransition.TERMINAL_STATE]: EngineState.FINISHED,
   },
   [EngineState.FINISHED]: {
