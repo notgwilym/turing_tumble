@@ -21,20 +21,32 @@
     
     // Determine piece type and properties
     const pieceType = $derived(() => getPieceType(piece));
-    const rotation = $derived(() =>
-        piece instanceof NormalGear
-            ? 22.5
-        : piece instanceof GearBit
-            ? piece.rotation === GearRotation.Clockwise
-                ? 90
-                : 0
-            : 0
+    const rotation = $derived(() => {
+        let base = 0;
+        
+        if (piece instanceof Gear) {
+            base = piece.rotation === GearRotation.Clockwise ? 90 : 0;
+
+            if (piece instanceof NormalGear) {
+                base += 22.5;
+            }
+        }
+
+        if (piece instanceof Bit) {
+            base = piece.orientation === Orientation.Left ? 90 : 0;
+
+        }
+        return base;
+    });
+    const h_flip = $derived(() => {
+        if (piece instanceof Ramp) {
+            return piece.orientation === Orientation.Left  ? -1 : 1;
+        }
+
+        return 1;
+    }
     );
-    const h_flip = $derived(() =>
-        piece instanceof FlippablePiece && piece.orientation === Orientation.Left
-            ? -1
-            : 1
-    );
+
     const svgPath = $derived(getSvgPath(piece));
     
     function getPieceType(p: Piece): string {
