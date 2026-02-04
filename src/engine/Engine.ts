@@ -2,7 +2,7 @@ import { Board, CellType } from "./Board";
 import { Ball } from "./Ball";
 import { FlippablePiece, Piece } from "./pieces/Piece";
 import { Interceptor } from "./pieces/Interceptor";
-import { Gear, GearRotation } from "./pieces/Gear";
+import { Gear, GearBit, GearRotation } from "./pieces/Gear";
 
 enum EngineState {
   INIT = 'INIT',
@@ -163,6 +163,10 @@ export class Engine {
       }
 
       pieceAtLocation.handleBall(currentBall);
+      
+      if (pieceAtLocation instanceof GearBit) {
+        this.board.getGearSetManager().turnGear(pieceAtLocation as Gear);
+      }
     }
     // else handle right and left exits
     else if (ballAtCellType === CellType.RightExit) {
