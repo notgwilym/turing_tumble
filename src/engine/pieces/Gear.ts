@@ -39,7 +39,6 @@ export class GearBit extends Gear {
       ball.moveTo(this.x - 1, this.y + 1);
     }
 
-    this.turn();
   }
 }
 
@@ -53,7 +52,7 @@ export class GearSetManager {
   }
 
   // turn all gears in the set containing the given gear
-  turnGear(gear: Gear): void {
+  public turnGear(gear: Gear): void {
     const gearSet = this.getSet(gear);
     if (!gearSet) {
       throw new Error("Gear does not belong to any set");
@@ -64,7 +63,7 @@ export class GearSetManager {
     }
   }
 
-  addGear(gear: Gear, adjacentGears: Gear[]): void {
+  public addGear(gear: Gear, adjacentGears: Gear[]): void {
     if (adjacentGears.length === 0) {
       // no adjacent gears - create new set
       this.createNewSet(gear);
@@ -83,7 +82,7 @@ export class GearSetManager {
     this.mergeGearSets(gear, adjacentGears);
   }
 
-  removeGear(gear: Gear): void {
+  public removeGear(gear: Gear): void {
     if (gear.setId === null) return;
 
     const gearSet = this.sets.get(gear.setId);
@@ -97,6 +96,11 @@ export class GearSetManager {
     }
     
     gear.setId = null;
+  }
+
+  // debug helper
+  public getAllSets(): Map<number, Set<Gear>> {
+    return this.sets;
   }
 
   private createNewSet(gear: Gear): void {
@@ -180,10 +184,5 @@ export class GearSetManager {
 
     // add new gear to merged set
     this.addToSet(newGear, largestSetId);
-  }
-
-  // debug helper
-  getAllSets(): Map<number, Set<Gear>> {
-    return this.sets;
   }
 }

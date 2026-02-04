@@ -72,6 +72,7 @@
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
     role="gridcell"
+    tabindex="0"
     aria-label="{cellClass} at {x}, {y}"
 >
     {#if cellType === CellType.Peg}

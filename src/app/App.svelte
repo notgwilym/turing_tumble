@@ -70,6 +70,8 @@
             pieces: engine.getBoard().getPieceGrid().map(row => row.map(piece => piece ? piece.clone() : null)),
         };
 
+        
+
         // console.log(
         //     engine.getBoard().getPieceGrid()[0][4],
         //     gameState.pieces[0][4],
@@ -80,6 +82,7 @@
     // Control handlers
     function step() {
         engine.step();
+        console.log(engine.getStateString());
     }
 
     // Setup default puzzle for testing

@@ -158,7 +158,6 @@ export class Engine {
       }
       // sim terminates if ball hits interceptor
       if (pieceAtLocation instanceof Interceptor) {
-        this.activeBalls.pop();
         this.transition(StateTransition.TERMINAL_STATE);
         return;
       }
@@ -212,7 +211,7 @@ export class Engine {
         } else if (cellType === CellType.Peg) {
           if (piece) {
             if (piece instanceof Gear) {
-              row += `[${piece.rotation === 0 ? "G" : "g"}  ] `;
+              row += `[${piece.rotation === GearRotation.Clockwise ? "G" : "g"}  ] `;
             }
           }
           else {
@@ -259,6 +258,13 @@ export class Engine {
     }
 
     state += `Finished Balls: [${this.finishedBalls.map(b => b.colour).join(", ")}]\n`;
+
+    state += 'Gear Sets on Board: \n';
+    const gearSets = this.board.getGearSetManager().getAllSets();
+    gearSets.forEach((set, index) => {
+      state += `  Gear Set ${index + 1}: ${Array.from(set.values()).map(g => `(${g.x},${g.y})`).join(", ")}\n`;
+    });
+
     
     return state;
   }

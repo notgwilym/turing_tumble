@@ -27,7 +27,6 @@ export class Ball {
         this.prev_y = this.y;
         this.x = newX;
         this.y = newY;
-        console.log(`Ball moved to (${this.x}, ${this.y})`);
     }
 
     clone(): Ball {
