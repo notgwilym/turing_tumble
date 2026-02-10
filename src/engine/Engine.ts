@@ -122,6 +122,14 @@ export class Engine {
 
   // remove piece
 
+  public removePiece(x: number, y: number) {
+    if (this.state !== EngineState.SETUP) {
+      throw new Error("Can only remove pieces in SETUP state");
+    }
+    this.board.removePiece(x, y);
+    this.notify();
+  }
+
   // play
 
   public step() {

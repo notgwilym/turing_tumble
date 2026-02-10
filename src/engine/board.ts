@@ -73,6 +73,14 @@ export class Board {
         }
     }
 
+    public removePiece(x: number, y: number): void {
+        const piece = this.pieceGrid[y][x];
+        if (piece instanceof Gear) {
+            this.gearSetManager.removeGear(piece);
+        }
+        this.pieceGrid[y][x] = null;
+    }
+
     public getGrid(): CellType[][] {
         return this.grid;
     }
