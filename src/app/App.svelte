@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Engine } from '../engine/Engine';
     import { CellType } from '../engine/Board';
-    import { Orientation } from '../engine/pieces/Piece';
+    import { FlippablePiece, Orientation } from '../engine/pieces/Piece';
     import { Bit } from '../engine/pieces/Bit';
     import { Ramp } from '../engine/pieces/Ramp';
     import { Crossover } from '../engine/pieces/Crossover';
@@ -30,7 +30,6 @@
         stateString: '',
     });
 
-    // Error message shown as a toast when a placement fails
     let placementError = $state<string | null>(null);
     let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -39,9 +38,7 @@
 
     $effect(() => {
         syncFromEngine();
-        const unsubscribe = engine.subscribe(() => {
-            syncFromEngine();
-        });
+        const unsubscribe = engine.subscribe(() => syncFromEngine());
         return unsubscribe;
     });
 
@@ -52,41 +49,107 @@
             leftQueueCount: engine.getQueueCounts().left,
             rightQueueCount: engine.getQueueCounts().right,
             stateString: engine.getStateString(),
-            activeBalls: engine.getActiveBalls().map(ball => ball.clone()),
-            finishedBalls: engine.getFinishedBalls().map(ball => ball.clone()),
-            board: engine.getBoard().getGrid().map(row => row.map(cell => cell)),
-            pieces: engine.getBoard().getPieceGrid().map(row => row.map(piece => piece ? piece.clone() : null)),
+            activeBalls: engine.getActiveBalls().map(b => b.clone()),
+            finishedBalls: engine.getFinishedBalls().map(b => b.clone()),
+            board: engine.getBoard().getGrid().map(row => [...row]),
+            pieces: engine.getBoard().getPieceGrid().map(row =>
+                row.map(p => p ? p.clone() : null)
+            ),
         };
     }
 
-    function step() {
-        engine.step();
-    }
+    function step() { engine.step(); }
 
-    // ─── Piece placement factory ──────────────────────────────────────────────
+    // ─── Drop: toolbar→board (copy) or board→board (move) ────────────────────
     //
-    // This is the single place that knows how to turn a (pieceType, orientation,
-    // x, y) tuple into a concrete Piece subclass.  Keeping it here means the
-    // toolbar and cells stay generic — they just shuttle strings around.
+    // The payload always carries pieceType + orientation/rotation.
+    // Board-origin drags additionally carry fromX/fromY, making this a move:
+    //   1. Remove piece from its old cell (handles gear-set cleanup in Board).
+    //   2. If target cell is already occupied, remove that piece too (avoids
+    //      silent overwrites that would orphan gear-set entries).
+    //   3. Place fresh piece at new coordinates.
 
-    function handlePieceDrop(x: number, y: number, payloadJson: string) {
+    function handlePieceDrop(toX: number, toY: number, payloadJson: string) {
         try {
-            const { pieceType, orientation, rotation } = JSON.parse(payloadJson) as {
+            const { pieceType, orientation, rotation, fromX, fromY } = JSON.parse(payloadJson) as {
                 pieceType: string;
                 orientation?: Orientation;
                 rotation?: GearRotation;
+                fromX?: number;
+                fromY?: number;
             };
 
-            const piece = createPiece(pieceType, x, y, orientation, rotation);
-            if (!piece) return;
+            const isMove = fromX !== undefined && fromY !== undefined;
 
-            engine.addPiece(piece);
-            showError(null); // clear any previous error
+            // No-op if dropped back on the same cell
+            if (isMove && fromX === toX && fromY === toY) return;
+
+            // For moves, remove from origin first
+            if (isMove) engine.removePiece(fromX!, fromY!);
+
+            // If target is occupied, clear it before placing
+            const existing = engine.getBoard().getPieceAt(toX, toY);
+            if (existing) engine.removePiece(toX, toY);
+
+            const piece = createPiece(pieceType, toX, toY, orientation, rotation);
+            if (piece) engine.addPiece(piece);
+
+            showError(null);
         } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            showError(msg);
+            showError(err instanceof Error ? err.message : String(err));
         }
     }
+
+    // ─── Click on board piece: flip orientation ───────────────────────────────
+    //
+    // FlippablePiece.flip() mutates the piece in-place, but since gameState
+    // is a snapshot we can't just call flip() on the clone.  Instead we:
+    //   1. Get the live piece from the engine's board.
+    //   2. Clone it, flip the clone, then remove-old / add-new via the engine
+    //      so the engine's notify() fires and the UI re-syncs.
+
+    function handlePieceFlip(x: number, y: number) {
+        try {
+            const piece = engine.getBoard().getPieceAt(x, y);
+            if (!piece || !(piece instanceof FlippablePiece)) return;
+
+            const flipped = piece.clone() as FlippablePiece;
+            flipped.flip();
+
+            engine.removePiece(x, y);
+            engine.addPiece(flipped);
+        } catch (err) {
+            showError(err instanceof Error ? err.message : String(err));
+        }
+    }
+
+    // ─── Drag off board: delete ───────────────────────────────────────────────
+    // Triggered by PieceSprite.dragend when dropEffect === 'none',
+    // meaning the drag ended outside any valid drop target.
+
+    function handlePieceRemove(x: number, y: number) {
+        try {
+            engine.removePiece(x, y);
+        } catch (err) {
+            showError(err instanceof Error ? err.message : String(err));
+        }
+    }
+
+    // ─── Clear board ──────────────────────────────────────────────────────────
+    // Iterate the piece grid snapshot and remove every occupied cell.
+
+    function clearBoard() {
+        const grid = engine.getBoard().getPieceGrid();
+        for (let y = 0; y < grid.length; y++) {
+            for (let x = 0; x < grid[y].length; x++) {
+                if (grid[y][x] !== null) {
+                    engine.removePiece(x, y);
+                }
+            }
+        }
+    }
+
+    // ─── Piece factory ────────────────────────────────────────────────────────
 
     function createPiece(
         type: string,
@@ -97,14 +160,19 @@
     ): Piece | null {
         const ori = orientation ?? Orientation.Right;
         const rot = rotation ?? GearRotation.Counterclockwise;
-
         switch (type) {
-            case 'Bit':        return new Bit(x, y, ori);
-            case 'Ramp':       return new Ramp(x, y, ori);
-            case 'Crossover':  return new Crossover(x, y);
+            case 'bit':
+            case 'Bit':         return new Bit(x, y, ori);
+            case 'ramp':
+            case 'Ramp':        return new Ramp(x, y, ori);
+            case 'crossover':
+            case 'Crossover':   return new Crossover(x, y);
+            case 'interceptor':
             case 'Interceptor': return new Interceptor(x, y);
-            case 'NormalGear': return new NormalGear(x, y);
-            case 'GearBit':    return new GearBit(x, y, rot);
+            case 'NormalGear':
+            case 'gear':        return new NormalGear(x, y);
+            case 'GearBit':
+            case 'gearbit':     return new GearBit(x, y, rot);
             default:
                 console.warn('Unknown piece type:', type);
                 return null;
@@ -114,12 +182,11 @@
     function showError(msg: string | null) {
         placementError = msg;
         if (errorTimeout) clearTimeout(errorTimeout);
-        if (msg) {
-            errorTimeout = setTimeout(() => { placementError = null; }, 3000);
-        }
+        if (msg) errorTimeout = setTimeout(() => { placementError = null; }, 3000);
     }
 
-    // Setup gear test on mount
+    // ─── Initial board setup ──────────────────────────────────────────────────
+
     function setupGearTest() {
         engine.addPiece(new GearBit(3, 0, GearRotation.Counterclockwise));
         engine.addPiece(new NormalGear(3, 1));
@@ -144,8 +211,6 @@
         engine.addPiece(new Ramp(7, 0, Orientation.Left));
         engine.addPiece(new Ramp(6, 1, Orientation.Left));
         engine.addPiece(new Ramp(5, 2, Orientation.Left));
-
-        // engine.removePiece(5, 2);
     }
 
     setupGearTest();
@@ -153,10 +218,8 @@
 
 <main>
     <div class="app-layout">
-        <!-- Left toolbar -->
-        <PieceToolbar />
+        <PieceToolbar onClearBoard={clearBoard} />
 
-        <!-- Centre: controls + board -->
         <div class="center-column">
             <div class="controls-section">
                 <GameControls
@@ -171,11 +234,8 @@
                 />
             </div>
 
-            <!-- Error toast -->
             {#if placementError}
-                <div class="error-toast" role="alert">
-                    ⚠️ {placementError}
-                </div>
+                <div class="error-toast" role="alert">⚠️ {placementError}</div>
             {/if}
 
             <div class="board-display">
@@ -185,6 +245,8 @@
                     activeBalls={gameState.activeBalls}
                     gridSize={GRID_SIZE}
                     onPieceDrop={handlePieceDrop}
+                    onPieceFlip={handlePieceFlip}
+                    onPieceRemove={handlePieceRemove}
                 />
             </div>
 
@@ -235,7 +297,6 @@
     .board-display {
         display: flex;
         justify-content: center;
-        align-items: center;
     }
 
     .error-toast {
@@ -253,9 +314,7 @@
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    .debug-section {
-        margin-top: 1.5rem;
-    }
+    .debug-section { margin-top: 1.5rem; }
 
     .debug-toggle {
         padding: 0.5rem 1rem;
@@ -266,9 +325,7 @@
         cursor: pointer;
     }
 
-    .debug-toggle:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
+    .debug-toggle:hover { background: rgba(255, 255, 255, 0.2); }
 
     .state-display {
         margin-top: 1rem;

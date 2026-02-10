@@ -12,31 +12,24 @@
         x: number;
         y: number;
         gridSize: number;
-        // Called when a piece is successfully dropped here.
-        // Receives the raw JSON payload from the drag transfer.
         onPieceDrop?: (x: number, y: number, payload: string) => void;
     } = $props();
 
     const left = $derived(x * gridSize);
-    const top = $derived(y * gridSize);
-    
+    const top  = $derived(y * gridSize);
     const cellClass = $derived(getCellClass(cellType));
 
     function getCellClass(type: CellType): string {
         switch (type) {
-            case CellType.Blank:    return 'blank';
-            case CellType.Peg:      return 'peg';
-            case CellType.SlotPeg:  return 'slot-peg';
-            case CellType.LeftExit: return 'left-exit';
+            case CellType.Blank:     return 'blank';
+            case CellType.Peg:       return 'peg';
+            case CellType.SlotPeg:   return 'slot-peg';
+            case CellType.LeftExit:  return 'left-exit';
             case CellType.RightExit: return 'right-exit';
             default: return 'blank';
         }
     }
 
-    // Whether this cell can accept a drop.
-    // SlotPegs accept all pieces; Pegs only accept NormalGear.
-    // We can't know piece type during dragover without reading dataTransfer,
-    // so we allow hover on both and let the engine validate on drop.
     const isDroppable = $derived(
         cellType === CellType.SlotPeg || cellType === CellType.Peg
     );
@@ -45,9 +38,10 @@
 
     function handleDragOver(e: DragEvent) {
         if (!isDroppable) return;
-        // Must call preventDefault() to allow drop
         e.preventDefault();
-        e.dataTransfer!.dropEffect = 'copy';
+        // Accept both toolbar copies and board moves
+        const effect = e.dataTransfer!.effectAllowed;
+        e.dataTransfer!.dropEffect = effect === 'move' ? 'move' : 'copy';
         isHovering = true;
     }
 
@@ -58,7 +52,6 @@
     function handleDrop(e: DragEvent) {
         e.preventDefault();
         isHovering = false;
-
         if (!isDroppable || !onPieceDrop) return;
 
         const payload = e.dataTransfer?.getData('application/turing-piece');
@@ -89,9 +82,9 @@
     {:else if cellType === CellType.SlotPeg}
         <div class="slot-peg-marker"></div>
     {:else if cellType === CellType.LeftExit}
-        <div class="exit-arrow left">←</div>
+        <div class="exit-arrow">←</div>
     {:else if cellType === CellType.RightExit}
-        <div class="exit-arrow right">→</div>
+        <div class="exit-arrow">→</div>
     {/if}
 </div>
 

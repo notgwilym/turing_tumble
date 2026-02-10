@@ -13,15 +13,19 @@
         activeBalls,
         gridSize = 60,
         onPieceDrop,
+        onPieceFlip,
+        onPieceRemove,
     } = $props<{
         board: CellType[][];
         pieces: (Piece | null)[][];
         activeBalls: Ball[];
         gridSize?: number;
         onPieceDrop?: (x: number, y: number, payload: string) => void;
+        onPieceFlip?: (x: number, y: number) => void;
+        onPieceRemove?: (x: number, y: number) => void;
     }>();
 
-    const boardWidth = $derived(board[0]?.length * gridSize || 0);
+    const boardWidth  = $derived(board[0]?.length * gridSize || 0);
     const boardHeight = $derived(board.length * gridSize || 0);
 </script>
 
@@ -29,13 +33,13 @@
     class="board-container"
     style="width: {boardWidth}px; height: {boardHeight}px;"
 >
-    <!-- Layer 1: Grid (drop targets live here) -->
+    <!-- Layer 1: Grid cells (drop targets) -->
     <BoardGrid {board} {gridSize} {onPieceDrop} />
 
-    <!-- Layer 2: Pieces -->
-    <PiecesLayer {pieces} {gridSize} />
+    <!-- Layer 2: Placed pieces (draggable + clickable) -->
+    <PiecesLayer {pieces} {gridSize} onFlip={onPieceFlip} onRemove={onPieceRemove} />
 
-    <!-- Layer 3: Balls (on top) -->
+    <!-- Layer 3: Active balls -->
     <BallsLayer {activeBalls} {gridSize} />
 </div>
 

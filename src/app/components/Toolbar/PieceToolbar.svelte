@@ -4,7 +4,12 @@
     import PieceIcon from './PieceIcon.svelte';
     import type { PieceConfig } from './PieceIcon.svelte';
 
-    // Each entry is mutable state so the orientation toggle is reactive
+    let {
+        onClearBoard,
+    }: {
+        onClearBoard?: () => void;
+    } = $props();
+
     let pieces = $state<PieceConfig[]>([
         {
             type: 'Bit',
@@ -41,7 +46,6 @@
         },
     ]);
 
-    // Toggle the orientation/rotation of a piece type in the toolbar
     function toggleOrientation(index: number) {
         const p = pieces[index];
         if (p.orientation !== undefined) {
@@ -54,11 +58,32 @@
                 : GearRotation.Clockwise;
         }
     }
+
+    let confirmClear = $state(false);
+    let confirmTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Two-step clear: first click arms it, second click fires.
+    // Resets automatically after 2 s if not confirmed.
+    function handleClearClick() {
+        if (!confirmClear) {
+            confirmClear = true;
+            if (confirmTimeout) clearTimeout(confirmTimeout);
+            confirmTimeout = setTimeout(() => { confirmClear = false; }, 2000);
+        } else {
+            confirmClear = false;
+            if (confirmTimeout) clearTimeout(confirmTimeout);
+            onClearBoard?.();
+        }
+    }
 </script>
 
 <aside class="piece-toolbar">
     <h3 class="toolbar-title">Pieces</h3>
-    <p class="toolbar-hint">Drag onto board<br/>Click ◀▶ to flip</p>
+    <p class="toolbar-hint">
+        Drag to place<br/>
+        Click ◀▶ to flip<br/>
+        Drag off board to delete
+    </p>
 
     <div class="piece-list">
         {#each pieces as config, i}
@@ -71,6 +96,21 @@
             {/if}
         {/each}
     </div>
+
+    <hr class="section-divider" />
+
+    <button
+        class="clear-btn"
+        class:armed={confirmClear}
+        onclick={handleClearClick}
+        title="Clear all pieces from the board"
+    >
+        {#if confirmClear}
+            ⚠️ Confirm clear
+        {:else}
+            🗑 Clear board
+        {/if}
+    </button>
 </aside>
 
 <style>
@@ -99,10 +139,10 @@
 
     .toolbar-hint {
         margin: 0 0 0.5rem;
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         color: #666;
         text-align: center;
-        line-height: 1.4;
+        line-height: 1.5;
     }
 
     .piece-list {
@@ -115,5 +155,41 @@
         border: none;
         border-top: 1px solid rgba(255, 255, 255, 0.07);
         margin: 0.1rem 0;
+    }
+
+    .section-divider {
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        margin: 0.4rem 0 0.2rem;
+    }
+
+    .clear-btn {
+        width: 100%;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 80, 80, 0.3);
+        background: rgba(255, 80, 80, 0.1);
+        color: #ff8888;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        text-align: center;
+    }
+
+    .clear-btn:hover {
+        background: rgba(255, 80, 80, 0.2);
+        border-color: rgba(255, 80, 80, 0.5);
+    }
+
+    .clear-btn.armed {
+        background: rgba(255, 160, 0, 0.25);
+        border-color: rgba(255, 160, 0, 0.7);
+        color: #ffcc44;
+        animation: pulse 0.6s ease infinite alternate;
+    }
+
+    @keyframes pulse {
+        from { opacity: 0.8; }
+        to   { opacity: 1; }
     }
 </style>

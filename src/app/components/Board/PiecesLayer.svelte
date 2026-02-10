@@ -4,10 +4,14 @@
     
     let { 
         pieces,
-        gridSize 
+        gridSize,
+        onFlip,
+        onRemove,
     }: {
         pieces: (Piece | null)[][];
         gridSize: number;
+        onFlip?: (x: number, y: number) => void;
+        onRemove?: (x: number, y: number) => void;
     } = $props();
 </script>
 
@@ -18,6 +22,8 @@
                 <PieceSprite 
                     {piece} 
                     {gridSize}
+                    {onFlip}
+                    {onRemove}
                 />
             {/if}
         {/each}
@@ -29,6 +35,7 @@
         position: absolute;
         inset: 0;
         z-index: 2;
-        pointer-events: none; /* Let clicks pass through to grid */
+        /* Must be auto so PieceSprite receives mouse/drag events */
+        pointer-events: auto;
     }
 </style>
