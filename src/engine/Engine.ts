@@ -2,7 +2,7 @@ import { Board, CellType } from "./Board";
 import { Ball } from "./Ball";
 import { FlippablePiece, Piece } from "./pieces/Piece";
 import { Interceptor } from "./pieces/Interceptor";
-import { Gear, GearBit, GearRotation } from "./pieces/Gear";
+import { Gear, GearBit, NormalGear, GearRotation } from "./pieces/Gear";
 
 enum EngineState {
   INIT = 'INIT',
@@ -54,15 +54,13 @@ export class Engine {
   private state: EngineState = EngineState.INIT;
   private currentTick: number = 0;
 
-  private board: Board; // models grid and pieces
+  private board: Board;
 
-  // balls
   private leftStartQueue: Ball[] = [];
   private rightStartQueue: Ball[] = [];
   private activeBalls: Ball[] = [];
   private finishedBalls: Ball[] = [];
 
-  // for event system
   private listeners = new Set<() => void>();
 
   constructor(redBallsAmount: number = 20, blueBallsAmount: number = 20) {
@@ -72,55 +70,31 @@ export class Engine {
     this.transition(StateTransition.INIT_DONE);
   }
 
-  // subscribe to engine state changes
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    // return unsubscribe function
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return () => { this.listeners.delete(listener); };
   }
 
   private notify(): void {
     this.listeners.forEach(fn => fn());
   }
 
-  public getCurrentTick(): number {
-    return this.currentTick;
-  }
-
-  public getState(): EngineState {
-    return this.state;
-  }
-
-  public getActiveBalls(): Ball[] {
-    return [...this.activeBalls];
-  }
-
-  public getFinishedBalls(): Ball[] {
-    return [...this.finishedBalls];
-  }
-
+  public getCurrentTick(): number { return this.currentTick; }
+  public getState(): EngineState { return this.state; }
+  public getActiveBalls(): Ball[] { return [...this.activeBalls]; }
+  public getFinishedBalls(): Ball[] { return [...this.finishedBalls]; }
   public getQueueCounts(): { left: number; right: number } {
-    return {
-      left: this.leftStartQueue.length,
-      right: this.rightStartQueue.length,
-    };
+    return { left: this.leftStartQueue.length, right: this.rightStartQueue.length };
   }
+  public getBoard(): Board { return this.board; }
 
-  public getBoard(): Board {
-    return this.board;
-  }
-
-  public addPiece (piece: Piece) {
+  public addPiece(piece: Piece) {
     if (this.state !== EngineState.SETUP) {
       throw new Error("Can only add pieces in SETUP state");
     }
     this.board.placePiece(piece);
     this.notify();
   }
-
-  // remove piece
 
   public removePiece(x: number, y: number) {
     if (this.state !== EngineState.SETUP) {
@@ -130,68 +104,94 @@ export class Engine {
     this.notify();
   }
 
-  // play
+  // ─── Toggle / rotate a piece in place ──────────────────────────────────────
+  //
+  // Handles two distinct cases that share the same user gesture (click):
+  //
+  // • FlippablePiece (Bit, Ramp): no gear-set involvement, so we can safely
+  //   remove → clone → flip → re-add.  The engine's normal placement validation
+  //   still runs, which is desirable.
+  //
+  // • GearBit: must NOT use remove/re-add because GearSetManager.addGear()
+  //   reconstructs set membership from scratch via adjacency, which would
+  //   cascade incorrect rotation changes to every other gear in the chain.
+  //   Instead we call gearSetManager.turnGear() which atomically turns the
+  //   entire set exactly one step, preserving all set memberships.
+  //
+  // • NormalGear: rotation is fully determined by adjacency rules when placed.
+  //   There is no meaningful user-toggled state — no-op.
+  //
+  // • Crossover / Interceptor: no orientation state — no-op.
+
+  public togglePiece(x: number, y: number): void {
+    if (this.state !== EngineState.SETUP) {
+      throw new Error("Can only toggle pieces in SETUP state");
+    }
+
+    const piece = this.board.getPieceAt(x, y);
+    if (!piece) return;
+
+    if (piece instanceof FlippablePiece) {
+      // Standard flip: remove, clone with flipped orientation, re-place.
+      const flipped = piece.clone() as FlippablePiece;
+      flipped.flip();
+      this.board.removePiece(x, y);
+      this.board.placePiece(flipped);
+      this.notify();
+      return;
+    }
+
+    if (piece instanceof GearBit) {
+      // Turn the entire gear set this GearBit belongs to atomically.
+      this.board.getGearSetManager().turnGear(piece);
+      this.notify();
+      return;
+    }
+
+    // NormalGear, Crossover, Interceptor — no togglable state.
+  }
 
   public step() {
     this.transition(StateTransition.STEP);
-    // process one tick
     this.tick();
     this.notify();
   }
 
-  // process game logic for one tick
   private tick() {
     if (this.state !== EngineState.RUNNING && this.state !== EngineState.FROZEN) {
       throw new Error("Can only process tick in RUNNING or FROZEN state");
     }
 
     if (this.currentTick === 0) {
-      // introduce first ball
       this.dropBall(this.board.getStartSide());
       this.currentTick += 1;
       return;
     }
 
-    if (this.activeBalls.length != 1 ) {
-      throw new Error("No single active ball to process in tick.");
-    }
     let currentBall = this.activeBalls[0];
     let ballAtCellType = this.board.getCellType(currentBall.x, currentBall.y);
 
-    // if ball at a slotpeg, get the piece there and process interaction
     if (ballAtCellType === CellType.SlotPeg) {
       let pieceAtLocation = this.board.getPieceAt(currentBall.x, currentBall.y);
       if (pieceAtLocation === null) {
         throw new Error("No piece placed at slot where ball has reached.");
       }
-      // sim terminates if ball hits interceptor
       if (pieceAtLocation instanceof Interceptor) {
         this.transition(StateTransition.TERMINAL_STATE);
         return;
       }
-
       pieceAtLocation.handleBall(currentBall);
-      
       if (pieceAtLocation instanceof GearBit) {
         this.board.getGearSetManager().turnGear(pieceAtLocation as Gear);
       }
     }
-    // else handle right and left exits
     else if (ballAtCellType === CellType.RightExit) {
       this.finishedBalls.push(this.activeBalls.pop()!);
-
-      let newBall = this.dropBall('right');
-      if (!newBall) {
-        this.transition(StateTransition.TERMINAL_STATE);
-      }
+      if (!this.dropBall('right')) this.transition(StateTransition.TERMINAL_STATE);
     }
     else if (ballAtCellType === CellType.LeftExit) {
       this.finishedBalls.push(this.activeBalls.pop()!);
-
-      let newBall = this.dropBall('left');
-      if (!newBall) {
-        this.transition(StateTransition.TERMINAL_STATE);
-      }
+      if (!this.dropBall('left')) this.transition(StateTransition.TERMINAL_STATE);
     }
     else {
       throw new Error("Ball is at invalid cell type.");
@@ -202,15 +202,10 @@ export class Engine {
 
   public getStateString(): string {
     let state = "";
-    // current state
     state += `Current State: ${this.state}\n`;
-    // current tick
     state += `Current Tick: ${this.currentTick}\n`;
-    // left start queue
     state += `Left Start Queue: [${this.leftStartQueue.length}]\n`;
-    // right start queue
     state += `Right Start Queue: [${this.rightStartQueue.length}]\n`;
-    // board
     state += `Board: \n`;
     
     for (let y = 0; y < this.board.getGrid().length; y++) {
@@ -221,12 +216,9 @@ export class Engine {
         if (cellType === CellType.Blank) {
           row += "[   ] ";
         } else if (cellType === CellType.Peg) {
-          if (piece) {
-            if (piece instanceof Gear) {
-              row += `[${piece.rotation === GearRotation.Clockwise ? "G" : "g"}  ] `;
-            }
-          }
-          else {
+          if (piece instanceof Gear) {
+            row += `[${piece.rotation === GearRotation.Clockwise ? "G" : "g"}  ] `;
+          } else {
             row += "[ . ] ";
           }
         }
@@ -253,10 +245,10 @@ export class Engine {
         }
         else if (cellType === CellType.LeftExit) {
           if (this.activeBalls.length == 1 && this.activeBalls[0].x === x && this.activeBalls[0].y === y) {
-              row += `[<-${this.activeBalls[0].colour.charAt(0)}] `;
-            } else {
-              row += "[<- ] ";
-            }
+            row += `[<-${this.activeBalls[0].colour.charAt(0)}] `;
+          } else {
+            row += "[<- ] ";
+          }
         }
         else if (cellType === CellType.RightExit) {
           if (this.activeBalls.length == 1 && this.activeBalls[0].x === x && this.activeBalls[0].y === y) {
@@ -270,57 +262,41 @@ export class Engine {
     }
 
     state += `Finished Balls: [${this.finishedBalls.map(b => b.colour).join(", ")}]\n`;
-
     state += 'Gear Sets on Board: \n';
     const gearSets = this.board.getGearSetManager().getAllSets();
     gearSets.forEach((set, index) => {
       state += `  Gear Set ${index + 1}: ${Array.from(set.values()).map(g => `(${g.x},${g.y})`).join(", ")}\n`;
     });
 
-    
     return state;
   }
 
-  private dropBall(side : 'left' | 'right'): Ball | undefined {
+  private dropBall(side: 'left' | 'right'): Ball | undefined {
     let nextBall: Ball | undefined;
     if (side === 'left') {
       nextBall = this.leftStartQueue.pop();
-      if (nextBall) {
-        nextBall.moveTo(this.board.getLeftEntryX(), 0);
-      }
-    }
-    else {
+      if (nextBall) nextBall.moveTo(this.board.getLeftEntryX(), 0);
+    } else {
       nextBall = this.rightStartQueue.pop();
-      if (nextBall) {
-        nextBall.moveTo(this.board.getRightEntryX(), 0);
-      }
+      if (nextBall) nextBall.moveTo(this.board.getRightEntryX(), 0);
     }
-    
-    if (nextBall) {
-      this.activeBalls.push(nextBall);
-    }
-
+    if (nextBall) this.activeBalls.push(nextBall);
     return nextBall;
   }
 
   private populateStartQueue(colour: 'red' | 'blue', count: number): Ball[] {
     const queue: Ball[] = [];
-    for (let i = 0; i < count; i++) {
-      queue.push(new Ball(colour));
-    }
+    for (let i = 0; i < count; i++) queue.push(new Ball(colour));
     return queue;
   }
 
   private transition(transition: StateTransition) {
     const transitions = STATE_TRANSITIONS[this.state];
-    
     if (!transitions || !(transition in transitions)) {
       console.warn(`FAILED: Invalid transition '${transition}' from state ${this.state}'`);
       return false;
     }
-
     this.state = transitions[transition]!;
     console.log(`SUCCESS: Transitioned to state '${this.state}' via '${transition}'`);
   }
-
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Engine } from '../engine/Engine';
     import { CellType } from '../engine/Board';
-    import { FlippablePiece, Orientation } from '../engine/pieces/Piece';
+    import { Orientation } from '../engine/pieces/Piece';
     import { Bit } from '../engine/pieces/Bit';
     import { Ramp } from '../engine/pieces/Ramp';
     import { Crossover } from '../engine/pieces/Crossover';
@@ -62,11 +62,10 @@
 
     // ─── Drop: toolbar→board (copy) or board→board (move) ────────────────────
     //
-    // The payload always carries pieceType + orientation/rotation.
-    // Board-origin drags additionally carry fromX/fromY, making this a move:
-    //   1. Remove piece from its old cell (handles gear-set cleanup in Board).
-    //   2. If target cell is already occupied, remove that piece too (avoids
-    //      silent overwrites that would orphan gear-set entries).
+    // Payload always has pieceType + orientation/rotation.
+    // fromX/fromY present → board-origin move:
+    //   1. Remove from origin (handles gear-set cleanup).
+    //   2. Remove any existing piece at target (avoids orphaned gear-set entries).
     //   3. Place fresh piece at new coordinates.
 
     function handlePieceDrop(toX: number, toY: number, payloadJson: string) {
@@ -80,14 +79,10 @@
             };
 
             const isMove = fromX !== undefined && fromY !== undefined;
+            if (isMove && fromX === toX && fromY === toY) return; // dropped on itself
 
-            // No-op if dropped back on the same cell
-            if (isMove && fromX === toX && fromY === toY) return;
-
-            // For moves, remove from origin first
             if (isMove) engine.removePiece(fromX!, fromY!);
 
-            // If target is occupied, clear it before placing
             const existing = engine.getBoard().getPieceAt(toX, toY);
             if (existing) engine.removePiece(toX, toY);
 
@@ -100,32 +95,20 @@
         }
     }
 
-    // ─── Click on board piece: flip orientation ───────────────────────────────
+    // ─── Toggle: flip (Bit/Ramp) or turn gear set (GearBit) ──────────────────
     //
-    // FlippablePiece.flip() mutates the piece in-place, but since gameState
-    // is a snapshot we can't just call flip() on the clone.  Instead we:
-    //   1. Get the live piece from the engine's board.
-    //   2. Clone it, flip the clone, then remove-old / add-new via the engine
-    //      so the engine's notify() fires and the UI re-syncs.
+    // Engine.togglePiece handles the different mechanics for each piece type.
+    // The UI just forwards the (x, y) — no type-checking here.
 
-    function handlePieceFlip(x: number, y: number) {
+    function handlePieceToggle(x: number, y: number) {
         try {
-            const piece = engine.getBoard().getPieceAt(x, y);
-            if (!piece || !(piece instanceof FlippablePiece)) return;
-
-            const flipped = piece.clone() as FlippablePiece;
-            flipped.flip();
-
-            engine.removePiece(x, y);
-            engine.addPiece(flipped);
+            engine.togglePiece(x, y);
         } catch (err) {
             showError(err instanceof Error ? err.message : String(err));
         }
     }
 
-    // ─── Drag off board: delete ───────────────────────────────────────────────
-    // Triggered by PieceSprite.dragend when dropEffect === 'none',
-    // meaning the drag ended outside any valid drop target.
+    // ─── Remove: drag off board ───────────────────────────────────────────────
 
     function handlePieceRemove(x: number, y: number) {
         try {
@@ -136,20 +119,19 @@
     }
 
     // ─── Clear board ──────────────────────────────────────────────────────────
-    // Iterate the piece grid snapshot and remove every occupied cell.
 
     function clearBoard() {
         const grid = engine.getBoard().getPieceGrid();
         for (let y = 0; y < grid.length; y++) {
             for (let x = 0; x < grid[y].length; x++) {
-                if (grid[y][x] !== null) {
-                    engine.removePiece(x, y);
-                }
+                if (grid[y][x] !== null) engine.removePiece(x, y);
             }
         }
     }
 
     // ─── Piece factory ────────────────────────────────────────────────────────
+    // Handles both lowercase keys (from board drags via getPieceType())
+    // and PascalCase keys (from toolbar PieceConfig.type).
 
     function createPiece(
         type: string,
@@ -162,17 +144,17 @@
         const rot = rotation ?? GearRotation.Counterclockwise;
         switch (type) {
             case 'bit':
-            case 'Bit':         return new Bit(x, y, ori);
+            case 'Bit':          return new Bit(x, y, ori);
             case 'ramp':
-            case 'Ramp':        return new Ramp(x, y, ori);
+            case 'Ramp':         return new Ramp(x, y, ori);
             case 'crossover':
-            case 'Crossover':   return new Crossover(x, y);
+            case 'Crossover':    return new Crossover(x, y);
             case 'interceptor':
-            case 'Interceptor': return new Interceptor(x, y);
-            case 'NormalGear':
-            case 'gear':        return new NormalGear(x, y);
-            case 'GearBit':
-            case 'gearbit':     return new GearBit(x, y, rot);
+            case 'Interceptor':  return new Interceptor(x, y);
+            case 'gear':
+            case 'NormalGear':   return new NormalGear(x, y);
+            case 'gearbit':
+            case 'GearBit':      return new GearBit(x, y, rot);
             default:
                 console.warn('Unknown piece type:', type);
                 return null;
@@ -222,10 +204,7 @@
 
         <div class="center-column">
             <div class="controls-section">
-                <GameControls
-                    onStep={step}
-                    engineState={gameState.engineState}
-                />
+                <GameControls onStep={step} engineState={gameState.engineState} />
                 <StatusDisplay
                     tick={gameState.tick}
                     engineState={gameState.engineState}
@@ -245,7 +224,7 @@
                     activeBalls={gameState.activeBalls}
                     gridSize={GRID_SIZE}
                     onPieceDrop={handlePieceDrop}
-                    onPieceFlip={handlePieceFlip}
+                    onPieceToggle={handlePieceToggle}
                     onPieceRemove={handlePieceRemove}
                 />
             </div>
@@ -255,9 +234,7 @@
                     {showDebug ? 'Hide' : 'Show'} Debug Info
                 </button>
                 {#if showDebug}
-                    <div class="state-display">
-                        <pre>{gameState.stateString}</pre>
-                    </div>
+                    <div class="state-display"><pre>{gameState.stateString}</pre></div>
                 {/if}
             </div>
         </div>
@@ -265,11 +242,7 @@
 </main>
 
 <style>
-    main {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 2rem;
-    }
+    main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
     .app-layout {
         display: flex;
@@ -294,10 +267,7 @@
         flex-wrap: wrap;
     }
 
-    .board-display {
-        display: flex;
-        justify-content: center;
-    }
+    .board-display { display: flex; justify-content: center; }
 
     .error-toast {
         background: rgba(220, 60, 60, 0.85);

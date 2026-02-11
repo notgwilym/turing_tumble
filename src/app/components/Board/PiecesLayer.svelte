@@ -5,12 +5,12 @@
     let { 
         pieces,
         gridSize,
-        onFlip,
+        onToggle,
         onRemove,
     }: {
         pieces: (Piece | null)[][];
         gridSize: number;
-        onFlip?: (x: number, y: number) => void;
+        onToggle?: (x: number, y: number) => void;
         onRemove?: (x: number, y: number) => void;
     } = $props();
 </script>
@@ -22,7 +22,7 @@
                 <PieceSprite 
                     {piece} 
                     {gridSize}
-                    {onFlip}
+                    {onToggle}
                     {onRemove}
                 />
             {/if}
@@ -35,7 +35,14 @@
         position: absolute;
         inset: 0;
         z-index: 2;
-        /* Must be auto so PieceSprite receives mouse/drag events */
-        pointer-events: auto;
+        /*
+         * IMPORTANT: must be none on the container.
+         * With 'auto', this div's transparent background swallows all drag
+         * events over empty cells, so Cell.handleDragOver never fires and
+         * slot-peg highlighting breaks entirely.
+         * Individual PieceSprite divs declare their own pointer-events: auto,
+         * so pieces remain fully interactive despite this setting.
+         */
+        pointer-events: none;
     }
 </style>
