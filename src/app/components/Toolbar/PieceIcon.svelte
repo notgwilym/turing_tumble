@@ -86,11 +86,7 @@
                 onclick={onOrientationToggle}
                 title="Toggle orientation"
             >
-                {#if config.type === 'GearBit'}
-                    {config.rotation === GearRotation.Clockwise ? '↻' : '↺'}
-                {:else}
-                    {config.orientation === Orientation.Left ? '◀' : '▶'}
-                {/if}
+                {config.orientation === Orientation.Left ? '◀' : '▶'}
             </button>
         {/if}
     </div>
