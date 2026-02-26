@@ -16,6 +16,10 @@
     import StatusDisplay from './components/Controls/StatusDisplay.svelte';
     import PieceToolbar from './components/Toolbar/PieceToolbar.svelte';
 
+    import AnimationTestPage from './components/AnimationTest/AnimationTestPage.svelte';
+
+    let showTestPage = $state(false);
+
     let engine = new Engine();
 
     let gameState = $state({
@@ -198,48 +202,61 @@
     setupGearTest();
 </script>
 
-<main>
-    <div class="app-layout">
-        <PieceToolbar onClearBoard={clearBoard} />
+{#if showTestPage}
+    <AnimationTestPage />
+{:else}
 
-        <div class="center-column">
-            <div class="controls-section">
-                <GameControls onStep={step} engineState={gameState.engineState} />
-                <StatusDisplay
-                    tick={gameState.tick}
-                    engineState={gameState.engineState}
-                    leftQueueCount={gameState.leftQueueCount}
-                    rightQueueCount={gameState.rightQueueCount}
-                />
-            </div>
+    <main>
+        <div class="app-layout">
+            <PieceToolbar onClearBoard={clearBoard} />
 
-            {#if placementError}
-                <div class="error-toast" role="alert">⚠️ {placementError}</div>
-            {/if}
+            <div class="center-column">
+                <div class="controls-section">
+                    <GameControls onStep={step} engineState={gameState.engineState} />
+                    <StatusDisplay
+                        tick={gameState.tick}
+                        engineState={gameState.engineState}
+                        leftQueueCount={gameState.leftQueueCount}
+                        rightQueueCount={gameState.rightQueueCount}
+                    />
+                </div>
 
-            <div class="board-display">
-                <Board
-                    board={gameState.board}
-                    pieces={gameState.pieces}
-                    activeBalls={gameState.activeBalls}
-                    gridSize={GRID_SIZE}
-                    onPieceDrop={handlePieceDrop}
-                    onPieceToggle={handlePieceToggle}
-                    onPieceRemove={handlePieceRemove}
-                />
-            </div>
-
-            <div class="debug-section">
-                <button onclick={() => showDebug = !showDebug} class="debug-toggle">
-                    {showDebug ? 'Hide' : 'Show'} Debug Info
-                </button>
-                {#if showDebug}
-                    <div class="state-display"><pre>{gameState.stateString}</pre></div>
+                {#if placementError}
+                    <div class="error-toast" role="alert">⚠️ {placementError}</div>
                 {/if}
+
+                <div class="board-display">
+                    <Board
+                        board={gameState.board}
+                        pieces={gameState.pieces}
+                        activeBalls={gameState.activeBalls}
+                        gridSize={GRID_SIZE}
+                        onPieceDrop={handlePieceDrop}
+                        onPieceToggle={handlePieceToggle}
+                        onPieceRemove={handlePieceRemove}
+                    />
+                </div>
+
+                <div class="debug-section">
+                    <button onclick={() => showDebug = !showDebug} class="debug-toggle">
+                        {showDebug ? 'Hide' : 'Show'} Debug Info
+                    </button>
+                    {#if showDebug}
+                        <div class="state-display"><pre>{gameState.stateString}</pre></div>
+                    {/if}
+                </div>
             </div>
         </div>
-    </div>
-</main>
+    </main>
+
+{/if}
+
+<button
+    class="page-toggle"
+    onclick={() => showTestPage = !showTestPage}
+>
+    {showTestPage ? '← Game' : '🔧 Anim Test'}
+</button>
 
 <style>
     main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
@@ -314,4 +331,20 @@
         line-height: 1.4;
         color: #e0e0e0;
     }
+
+    .page-toggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 9999;
+    padding: 6px 14px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    background: rgba(30,30,30,0.9);
+    color: #fff;
+    font-size: 0.8rem;
+    cursor: pointer;
+    }
+    .page-toggle:hover { background: rgba(60,60,60,0.9); }
+    
 </style>
