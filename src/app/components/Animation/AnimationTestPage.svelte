@@ -1,7 +1,7 @@
 <script lang="ts">
     import { PIECE_CONFIGS, getDisplayHeight, type PieceAnimConfig, type PiecePoint } from './PieceAnimConfig';
 
-    const GRID = 80; // larger than game grid for easier visual work
+    const GRID = 60; 
 
     // ─── Piece Inspector State ───────────────────────────────────────────────
     let selectedIdx = $state(0);

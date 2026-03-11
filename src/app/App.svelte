@@ -16,7 +16,7 @@
     import StatusDisplay from './components/Controls/StatusDisplay.svelte';
     import PieceToolbar from './components/Toolbar/PieceToolbar.svelte';
 
-    import AnimationTestPage from './components/AnimationTest/AnimationTestPage.svelte';
+    import AnimationTestPage from './components/Animation/AnimationTestPage.svelte';
 
     let showTestPage = $state(false);
 

@@ -19,8 +19,9 @@
     "baseUrl": "src",
     "paths": {
       "@engine/*": ["engine/*"],
-      "@app/*": ["app/*"]
+      "@app/*": ["app/*"],
+
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]
+  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"],
 }
