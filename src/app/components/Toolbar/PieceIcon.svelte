@@ -56,11 +56,13 @@
 
 <div class="piece-icon-row">
     <!-- Draggable piece preview -->
+    <!-- svelte-ignore a11y_interactive_supports_focus -->
     <div
         class="piece-icon"
         draggable="true"
         ondragstart={handleDragStart}
         title="Drag to place {config.label}"
+        role="button"
     >
         <img
             src={config.svgPath}
