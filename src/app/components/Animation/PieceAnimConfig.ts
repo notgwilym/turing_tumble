@@ -48,7 +48,7 @@ export interface PieceAnimConfig {
 // ─── Sizing ──────────────────────────────────────────────────────────────────
 
 const REFERENCE_CM_WIDTH = 31.7;
-export const DEFAULT_GLOBAL_SCALE = 1.2;
+export const DEFAULT_GLOBAL_SCALE = 1.21;
 
 export function getDisplayWidth(cfg: PieceAnimConfig, globalScale: number): number {
     return globalScale * (cfg.dimensions.cmWidth / REFERENCE_CM_WIDTH);

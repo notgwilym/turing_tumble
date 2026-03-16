@@ -12,6 +12,7 @@
         pieces,
         activeBalls,
         gridSize = 60,
+        globalScale,
         onPieceDrop,
         onPieceToggle,
         onPieceRemove,
@@ -20,6 +21,7 @@
         pieces: (Piece | null)[][];
         activeBalls: Ball[];
         gridSize?: number;
+        globalScale: number;
         onPieceDrop?: (x: number, y: number, payload: string) => void;
         onPieceToggle?: (x: number, y: number) => void;
         onPieceRemove?: (x: number, y: number) => void;
@@ -34,7 +36,7 @@
     style="width: {boardWidth}px; height: {boardHeight}px;"
 >
     <BoardGrid {board} {gridSize} {onPieceDrop} />
-    <PiecesLayer {pieces} {gridSize} onToggle={onPieceToggle} onRemove={onPieceRemove} />
+    <PiecesLayer {pieces} {gridSize} {globalScale} onToggle={onPieceToggle} onRemove={onPieceRemove} />
     <BallsLayer {activeBalls} {gridSize} />
 </div>
 

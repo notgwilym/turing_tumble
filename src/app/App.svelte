@@ -17,6 +17,7 @@
     import PieceToolbar from './components/Toolbar/PieceToolbar.svelte';
 
     import AnimationTestPage from './components/Animation/AnimationTestPage.svelte';
+    import { DEFAULT_GLOBAL_SCALE } from './components/Animation/PieceAnimConfig';
 
     let showTestPage = $state(false);
 
@@ -38,6 +39,7 @@
     let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const GRID_SIZE = 60;
+    const GLOBAL_SCALE = DEFAULT_GLOBAL_SCALE;  // or make it reactive: let globalScale = $state(DEFAULT_GLOBAL_SCALE);
     let showDebug = $state(false);
 
     $effect(() => {
@@ -231,6 +233,7 @@
                         pieces={gameState.pieces}
                         activeBalls={gameState.activeBalls}
                         gridSize={GRID_SIZE}
+                        globalScale={GLOBAL_SCALE}
                         onPieceDrop={handlePieceDrop}
                         onPieceToggle={handlePieceToggle}
                         onPieceRemove={handlePieceRemove}
