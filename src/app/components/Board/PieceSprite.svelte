@@ -7,7 +7,7 @@
     import { Interceptor } from '@engine/pieces/Interceptor';
     import { Gear, NormalGear, GearBit, GearRotation } from '@engine/pieces/Gear';
     import {
-        PIECE_CONFIGS,
+        PIECE_ANIM_CONFIGS,
         getDisplayWidthPx,
         getDisplayHeightPx,
         type PieceAnimConfig,
@@ -41,7 +41,7 @@
 
     function getAnimConfig(p: Piece): PieceAnimConfig {
         const type = getPieceType(p);
-        return PIECE_CONFIGS.find(c => c.type === type) ?? PIECE_CONFIGS[0];
+        return PIECE_ANIM_CONFIGS.find(c => c.type === type) ?? PIECE_ANIM_CONFIGS[0];
     }
 
     // ─── Derived values ──────────────────────────────────────────────────────
