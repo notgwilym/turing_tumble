@@ -334,6 +334,37 @@
         return lo.l + ((t - lo.t) / (hi.t - lo.t)) * (hi.l - lo.l);
     }
 
+    // ─── Offscreen path sampler ─────────────────────────────────────────────
+    //
+    // Creates an SVG path element in memory (never rendered).
+    // getPointAtLength() returns coordinates in whatever space the d string uses.
+
+    const offscreenSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const offscreenPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    offscreenSvg.appendChild(offscreenPath);
+    // Must be in DOM for getPointAtLength to work in some browsers
+    offscreenSvg.style.position = 'absolute';
+    offscreenSvg.style.width = '0';
+    offscreenSvg.style.height = '0';
+    offscreenSvg.style.overflow = 'hidden';
+
+    $effect(() => {
+        document.body.appendChild(offscreenSvg);
+        return () => { document.body.removeChild(offscreenSvg); };
+    });
+
+    function samplePath(d: string, lengthFraction: number): Point {
+        offscreenPath.setAttribute('d', d);
+        const totalLen = offscreenPath.getTotalLength();
+        const pt = offscreenPath.getPointAtLength(lengthFraction * totalLen);
+        return { x: pt.x, y: pt.y };
+    }
+
+    // Look up a saved path by key
+    function findSavedPath(key: string): SavedPath | undefined {
+        return savedPaths.find(p => p.key === key);
+    }
+
     // ─── Preview SVG layout (FIXED SIZE to prevent feedback loop) ────────────
     const PREVIEW_W = 400;
     const PREVIEW_H = 300;
@@ -367,30 +398,93 @@
         return checkConstraint(pvACfg, previewPieceAFlip, exitDir, pvBCfg, globalScale);
     });
 
-    // Ball position
+    // ─── Path keys for current preview setup ─────────────────────────────────
+
+    const pvAEntryDir = $derived<'left' | 'right'>(previewDir === 'right' ? 'left' : 'right');
+
+    const pvPathKeyA = $derived(`ANIM_${pvACfg.type}_${pvAEntryDir}`);
+    const pvPathKeyTrans = $derived(`TRANS_${pvACfg.type}_${pvAExitDir}_${pvBCfg.type}`);
+    const pvPathKeyB = $derived(`ANIM_${pvBCfg.type}_${pvBEntryDir}`);
+
+    // Ball position — uses saved paths if available, else linear fallback
     const ballPos = $derived.by(() => {
-        const aEntryDir: 'left' | 'right' = previewDir === 'right' ? 'left' : 'right';
-        const aEntry = ptPx(pvACfg, getEntryPoint(pvACfg, aEntryDir));
+        const aEntry = ptPx(pvACfg, getEntryPoint(pvACfg, pvAEntryDir));
         const aExit = pvAExitPt;
         const bEntry = pvBEntryPtCellFixed;
         const bExitDir: 'left' | 'right' = previewDir === 'right' ? 'right' : 'left';
         const bExit = ptPx(pvBCfg, getExitPoint(pvBCfg, bExitDir, previewPieceBFlip));
 
+        // World-space positions of key points
         const aStartWorld = { x: pvACx + aEntry.x, y: pvACy + aEntry.y };
         const aEndWorld   = { x: pvACx + aExit.x,  y: pvACy + aExit.y };
         const bStartWorld = { x: pvBCx + bEntry.x, y: pvBCy + bEntry.y };
         const bEndWorld   = { x: pvBCx + bExit.x,  y: pvBCy + bExit.y };
 
-        let t: number, from: Point, to: Point, kfs: SpeedKeyframe[];
+        let t: number, kfs: SpeedKeyframe[];
+
         if (ballProgress < 1) {
-            t = ballProgress; from = aStartWorld; to = aEndWorld; kfs = speedKeyframesA;
+            // ─── Segment 1: piece A path ─────────────────────────────────
+            t = ballProgress;
+            kfs = speedKeyframesA;
+            const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
+
+            const savedA = findSavedPath(pvPathKeyA);
+            if (savedA) {
+                // Path is in piece-fraction coords (offsets from centre).
+                // Sample → multiply by display size → add cell centre.
+                const pt = samplePath(savedA.d, lf);
+                return {
+                    x: pvACx + pt.x * dwPx(pvACfg),
+                    y: pvACy + pt.y * dhPx(pvACfg),
+                };
+            }
+            // Linear fallback
+            return {
+                x: aStartWorld.x + (aEndWorld.x - aStartWorld.x) * lf,
+                y: aStartWorld.y + (aEndWorld.y - aStartWorld.y) * lf,
+            };
+
         } else if (ballProgress < 2) {
-            t = ballProgress - 1; from = aEndWorld; to = bStartWorld; kfs = speedKeyframesT;
+            // ─── Segment 2: transition A→B ───────────────────────────────
+            t = ballProgress - 1;
+            kfs = speedKeyframesT;
+            const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
+
+            const savedT = findSavedPath(pvPathKeyTrans);
+            if (savedT) {
+                // Transition path origin is at A's exit. Coords are grid fractions.
+                const pt = samplePath(savedT.d, lf);
+                return {
+                    x: aEndWorld.x + pt.x * gridSpacing,
+                    y: aEndWorld.y + pt.y * gridSpacing,
+                };
+            }
+            // Linear fallback
+            return {
+                x: aEndWorld.x + (bStartWorld.x - aEndWorld.x) * lf,
+                y: aEndWorld.y + (bStartWorld.y - aEndWorld.y) * lf,
+            };
+
         } else {
-            t = ballProgress - 2; from = bStartWorld; to = bEndWorld; kfs = speedKeyframesB;
+            // ─── Segment 3: piece B path ─────────────────────────────────
+            t = ballProgress - 2;
+            kfs = speedKeyframesB;
+            const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
+
+            const savedB = findSavedPath(pvPathKeyB);
+            if (savedB) {
+                const pt = samplePath(savedB.d, lf);
+                return {
+                    x: pvBCx + pt.x * dwPx(pvBCfg),
+                    y: pvBCy + pt.y * dhPx(pvBCfg),
+                };
+            }
+            // Linear fallback
+            return {
+                x: bStartWorld.x + (bEndWorld.x - bStartWorld.x) * lf,
+                y: bStartWorld.y + (bEndWorld.y - bStartWorld.y) * lf,
+            };
         }
-        const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
-        return { x: from.x + (to.x - from.x) * lf, y: from.y + (to.y - from.y) * lf };
     });
 
     function startPreview() {
@@ -427,7 +521,7 @@
         const pathsOut = savedPaths.map(p => ({
             key: p.key, pathD: p.d, events: p.events, speed: p.speed, duration: p.duration,
         }));
-        const output = `// Auto-generated by AnimationTestPage\n// Grid: ${gridSpacing}px, Scale: ${globalScale}\n\nexport const PIECE_CONFIGS: PieceAnimConfig[] = ${JSON.stringify(configsOut, null, 2)};\n\nexport const ANIM_PATHS = ${JSON.stringify(pathsOut, null, 2)};\n`;
+        const output = `// Auto-generated by AnimationTestPage\n// Grid: ${gridSpacing}px, Scale: ${globalScale}\n\nimport type { PieceAnimConfig, PiecePathConfig, TransitionPathConfig } from './PieceAnimConfig';\n\nexport const PIECE_ANIM_CONFIGS: PieceAnimConfig[] = ${JSON.stringify(configsOut, null, 2)};\n\nexport const ANIM_PATHS = ${JSON.stringify(pathsOut, null, 2)};\n`;
         navigator.clipboard?.writeText(output);
         console.log(output);
         exportFlash = true;
@@ -461,7 +555,7 @@
                 </label>
                 <label>
                     Scale
-                    <input type="range" min="0.4" max="2" step="0.01" bind:value={globalScale} />
+                    <input type="range" min="0.4" max="1.2" step="0.01" bind:value={globalScale} />
                     <span class="val">{globalScale.toFixed(2)}</span>
                 </label>
             </div>
@@ -784,6 +878,19 @@
                     <div class="alignment" class:valid={chainAlignment.valid} class:invalid={!chainAlignment.valid}>
                         {chainAlignment.valid ? '✓' : '✗'} dx={chainAlignment.dx.toFixed(2)} dy={chainAlignment.dy.toFixed(2)}
                     </div>
+
+                    <!-- Path status: show which segments have authored paths -->
+                    <div class="path-status">
+                        <span class:has-path={!!findSavedPath(pvPathKeyA)} title={pvPathKeyA}>
+                            A: {findSavedPath(pvPathKeyA) ? '● path' : '○ linear'}
+                        </span>
+                        <span class:has-path={!!findSavedPath(pvPathKeyTrans)} title={pvPathKeyTrans}>
+                            T: {findSavedPath(pvPathKeyTrans) ? '● path' : '○ linear'}
+                        </span>
+                        <span class:has-path={!!findSavedPath(pvPathKeyB)} title={pvPathKeyB}>
+                            B: {findSavedPath(pvPathKeyB) ? '● path' : '○ linear'}
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Speed curve -->
@@ -1077,6 +1184,10 @@
     .alignment { font-size: 11px; padding: 4px 8px; border-radius: 3px; margin-top: 4px; }
     .alignment.valid { background: #052e16; color: #4ade80; }
     .alignment.invalid { background: #450a0a; color: #f87171; }
+    .path-status {
+        display: flex; gap: 8px; margin-top: 4px; font-size: 10px; color: #555;
+    }
+    .path-status span.has-path { color: #818cf8; }
     .speed-section { margin-bottom: 16px; }
     .speed-tabs { display: flex; gap: 0; margin-bottom: 8px; }
     .speed-tabs button {
