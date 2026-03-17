@@ -189,6 +189,23 @@
     function addPathEvent() { pathEvents = [...pathEvents, { at: 0.5, event: 'startFlip' }]; }
     function removePathEvent(idx: number) { pathEvents = pathEvents.filter((_, i) => i !== idx); }
 
+    const tab2PathKey = $derived(
+        pathMode === 'piece'
+            ? `ANIM_${configs[pathPieceIdx].type}_${pathEntryDir}`
+            : `TRANS_${configs[pathFromIdx].type}_${pathFromExitDir}_${configs[pathToIdx].type}`
+    );
+
+    $effect(() => {
+        const saved = findSavedPath(tab2PathKey);
+        if (saved) {
+            pathInputD = saved.d;
+            pathEvents = saved.events.map(e => ({ ...e }));
+        } else {
+            pathInputD = '';
+            pathEvents = [];
+        }
+    });
+
     // Saved paths
     interface SavedPath {
         key: string; mode: 'piece' | 'transition'; d: string;
@@ -226,19 +243,34 @@
         else if (speedSegment === 'transition') speedKeyframesT = kfs;
         else speedKeyframesB = kfs;
     }
+    // Sync editor state from saved paths when preview setup changes
+    $effect(() => {
+        const sA = findSavedPath(pvPathKeyA);
+        if (sA) { speedKeyframesA = sA.speed.map(k => ({ ...k })); durationA = sA.duration; }
+        else { speedKeyframesA = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationA = 2000; }
+
+        const sT = findSavedPath(pvPathKeyTrans);
+        if (sT) { speedKeyframesT = sT.speed.map(k => ({ ...k })); durationT = sT.duration; }
+        else { speedKeyframesT = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationT = 250; }
+
+        const sB = findSavedPath(pvPathKeyB);
+        if (sB) { speedKeyframesB = sB.speed.map(k => ({ ...k })); durationB = sB.duration; }
+        else { speedKeyframesB = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationB = 2000; }
+    });
 
     function savePath() {
         if (!transformedPath) return;
         const key = pathMode === 'piece'
             ? `ANIM_${configs[pathPieceIdx].type}_${pathEntryDir}`
             : `TRANS_${configs[pathFromIdx].type}_${pathFromExitDir}_${configs[pathToIdx].type}`;
-        savedPaths = savedPaths.filter(p => p.key !== key);
+        const existing = findSavedPath(key);
         const entry: SavedPath = {
             key, mode: pathMode, d: transformedPath.d,
             events: [...pathEvents],
-            // Capture actual speed keyframes from whichever segment tab is active
-            speed: getActiveKf().map(k => ({ ...k })),
-            duration: speedSegment === 'pieceA' ? durationA
+            // Preserve existing speed/duration if re-saving, else use Tab 3 editor
+            speed: existing ? existing.speed.map(k => ({ ...k })) : getActiveKf().map(k => ({ ...k })),
+            duration: existing ? existing.duration
+                    : speedSegment === 'pieceA' ? durationA
                     : speedSegment === 'transition' ? durationT
                     : durationB,
         };
@@ -441,10 +473,10 @@
         if (ballProgress < 1) {
             // ─── Segment 1: piece A path ─────────────────────────────────
             t = ballProgress;
-            kfs = speedKeyframesA;
+            const savedA = findSavedPath(pvPathKeyA);
+            kfs = savedA ? savedA.speed : speedKeyframesA;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
-            const savedA = findSavedPath(pvPathKeyA);
             if (savedA) {
                 // Path is in piece-fraction coords (offsets from centre).
                 // Sample → multiply by display size → add cell centre.
@@ -463,10 +495,10 @@
         } else if (ballProgress < 2) {
             // ─── Segment 2: transition A→B ───────────────────────────────
             t = ballProgress - 1;
-            kfs = speedKeyframesT;
+            const savedT = findSavedPath(pvPathKeyTrans);
+            kfs = savedT ? savedT.speed : speedKeyframesT;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
-            const savedT = findSavedPath(pvPathKeyTrans);
             if (savedT) {
                 // Transition path origin is at A's exit. Coords are grid fractions.
                 const pt = samplePath(savedT.d, lf);
@@ -484,10 +516,10 @@
         } else {
             // ─── Segment 3: piece B path ─────────────────────────────────
             t = ballProgress - 2;
-            kfs = speedKeyframesB;
+            const savedB = findSavedPath(pvPathKeyB);
+            kfs = savedB ? savedB.speed : speedKeyframesB;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
-            const savedB = findSavedPath(pvPathKeyB);
             if (savedB) {
                 const pt = samplePath(savedB.d, lf);
                 return {
@@ -517,7 +549,12 @@
         if (!isPlaying) return;
         const dt = (timestamp - lastTimestamp) * playbackSpeed;
         lastTimestamp = timestamp;
-        const totalDuration = durationA + durationT + durationB;
+        
+        const sA = findSavedPath(pvPathKeyA);
+        const sT = findSavedPath(pvPathKeyTrans);
+        const sB = findSavedPath(pvPathKeyB);
+        const totalDuration = (sA?.duration ?? durationA) + (sT?.duration ?? durationT) + (sB?.duration ?? durationB);
+        
         ballProgress = Math.min(3, ballProgress + (dt / totalDuration) * 3);
         if (ballProgress >= 3) { isPlaying = false; return; }
         animFrameId = requestAnimationFrame(animate);
