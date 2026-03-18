@@ -18,6 +18,15 @@
         type PathEvent,
     } from './PieceAnimConfig';
     import {
+        PIECE_EVENT_DEFS,
+        getAvailableEvents,
+        getDefaultEvents,
+        createPieceAnimRuntime,
+        processEvents,
+        resetPieceAnimRuntime,
+        type PieceAnimRuntime,
+    } from './PieceAnimState';
+    import {
         parsePath,
         serializePath,
         getPathStart,
@@ -26,6 +35,8 @@
         transformPathToEndpoints,
         getSqueeze,
     } from './svgPathUtils';
+
+    import { untrack } from 'svelte';
 
     // ─── Top-level State ─────────────────────────────────────────────────────
 
@@ -245,18 +256,88 @@
     }
     // Sync editor state from saved paths when preview setup changes
     $effect(() => {
-        const sA = findSavedPath(pvPathKeyA);
+        // Only re-run when piece selection changes (keys change)
+        const keyA = pvPathKeyA;
+        const keyT = pvPathKeyTrans;
+        const keyB = pvPathKeyB;
+
+        const sA = untrack(() => findSavedPath(keyA));
         if (sA) { speedKeyframesA = sA.speed.map(k => ({ ...k })); durationA = sA.duration; }
-        else { speedKeyframesA = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationA = 2000; }
+        else { speedKeyframesA = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationA = 400; }
 
-        const sT = findSavedPath(pvPathKeyTrans);
+        const sT = untrack(() => findSavedPath(keyT));
         if (sT) { speedKeyframesT = sT.speed.map(k => ({ ...k })); durationT = sT.duration; }
-        else { speedKeyframesT = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationT = 250; }
+        else { speedKeyframesT = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationT = 200; }
 
-        const sB = findSavedPath(pvPathKeyB);
+        const sB = untrack(() => findSavedPath(keyB));
         if (sB) { speedKeyframesB = sB.speed.map(k => ({ ...k })); durationB = sB.duration; }
-        else { speedKeyframesB = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationB = 2000; }
+        else { speedKeyframesB = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationB = 400; }
     });
+
+    // Per-segment events (edited in Tab 3)
+    let eventsA = $state<PathEvent[]>([]);
+    let eventsT = $state<PathEvent[]>([]);
+    let eventsB = $state<PathEvent[]>([]);
+
+    function getActiveEvents(): PathEvent[] {
+        return speedSegment === 'pieceA' ? eventsA
+            : speedSegment === 'transition' ? eventsT : eventsB;
+    }
+    function setActiveEvents(evts: PathEvent[]) {
+        if (speedSegment === 'pieceA') eventsA = evts;
+        else if (speedSegment === 'transition') eventsT = evts;
+        else eventsB = evts;
+    }
+
+    // Sync events from saved paths
+    $effect(() => {
+        const keyA = pvPathKeyA;
+        const keyT = pvPathKeyTrans;
+        const keyB = pvPathKeyB;
+
+        const sA = untrack(() => findSavedPath(keyA));
+        eventsA = sA ? sA.events.map(e => ({ ...e })) : [];
+
+        const sT = untrack(() => findSavedPath(keyT));
+        eventsT = sT ? sT.events.map(e => ({ ...e })) : [];
+
+        const sB = untrack(() => findSavedPath(keyB));
+        eventsB = sB ? sB.events.map(e => ({ ...e })) : [];
+    });
+
+    // Event marker interaction on speed curve
+    let draggingEventIdx = $state<number | null>(null);
+
+    function addEvent() {
+        const pieceType = speedSegment === 'pieceA' ? pvACfg.type
+            : speedSegment === 'pieceB' ? pvBCfg.type : '';
+        const available = getAvailableEvents(pieceType);
+        if (available.length === 0) return;
+        const evts = getActiveEvents();
+        setActiveEvents([...evts, { at: 0.5, event: available[0] as PathEvent['event'] }]
+            .sort((a, b) => a.at - b.at));
+    }
+
+    function removeEvent(idx: number) {
+        const evts = getActiveEvents();
+        setActiveEvents(evts.filter((_, i) => i !== idx));
+    }
+
+    function handleEventPointerDown(e: PointerEvent, idx: number) {
+        e.stopPropagation();
+        if (e.shiftKey || e.button === 2) {
+            removeEvent(idx);
+            suppressClick = true;
+            return;
+        }
+        draggingEventIdx = idx;
+        suppressClick = true;
+        (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+    }
+
+    // Piece animation runtimes for preview
+    let pvAnimA = $state<PieceAnimRuntime>(createPieceAnimRuntime());
+    let pvAnimB = $state<PieceAnimRuntime>(createPieceAnimRuntime());
 
     function savePath() {
         if (!transformedPath) return;
@@ -266,7 +347,8 @@
         const existing = findSavedPath(key);
         const entry: SavedPath = {
             key, mode: pathMode, d: transformedPath.d,
-            events: [...pathEvents],
+            events: existing ? existing.events.map(e => ({ ...e }))
+                : (pathMode === 'piece' ? getActiveEvents().map(e => ({ ...e })) : []),
             // Preserve existing speed/duration if re-saving, else use Tab 3 editor
             speed: existing ? existing.speed.map(k => ({ ...k })) : getActiveKf().map(k => ({ ...k })),
             duration: existing ? existing.duration
@@ -344,7 +426,19 @@
         (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
     }
 
-    function handleCurvePointerMove(e: PointerEvent) {
+function handleCurvePointerMove(e: PointerEvent) {
+        if (draggingPtIdx === null && draggingEventIdx === null) return;
+        // Handle event marker dragging
+        if (draggingEventIdx !== null) {
+            const svg = (e.currentTarget as SVGSVGElement);
+            const { x: svgX } = getSvgCoords(e, svg);
+            const { t } = svgToCurve(svgX, 0);
+            const evts = getActiveEvents();
+            const newEvts = [...evts];
+            newEvts[draggingEventIdx] = { ...newEvts[draggingEventIdx], at: Math.max(0.01, Math.min(0.99, t)) };
+            setActiveEvents(newEvts.sort((a, b) => a.at - b.at));
+            return;
+        }
         if (draggingPtIdx === null) return;
         const svg = (e.currentTarget as SVGSVGElement);
         const { x: svgX, y: svgY } = getSvgCoords(e, svg);
@@ -363,6 +457,7 @@
 
     function handleCurvePointerUp() {
         draggingPtIdx = null;
+        draggingEventIdx = null;
     }
 
     // Ball animation
@@ -537,6 +632,9 @@
 
     function startPreview() {
         isPlaying = true; ballProgress = 0;
+        resetPieceAnimRuntime(pvAnimA);
+        resetPieceAnimRuntime(pvAnimB);
+        pvAnimA = { ...pvAnimA }; pvAnimB = { ...pvAnimB }; // trigger reactivity
         lastTimestamp = performance.now();
         animFrameId = requestAnimationFrame(animate);
     }
@@ -544,18 +642,70 @@
         isPlaying = false;
         if (animFrameId) cancelAnimationFrame(animFrameId);
         ballProgress = 0;
+        resetPieceAnimRuntime(pvAnimA);
+        resetPieceAnimRuntime(pvAnimB);
+        pvAnimA = { ...pvAnimA }; pvAnimB = { ...pvAnimB };
     }
+
+    function saveTimingForSegment() {
+        // Save speed + events + duration for all segments that have a path
+        const updates: [string, SpeedKeyframe[], PathEvent[], number][] = [
+            [pvPathKeyA, speedKeyframesA, eventsA, durationA],
+            [pvPathKeyTrans, speedKeyframesT, eventsT, durationT],
+            [pvPathKeyB, speedKeyframesB, eventsB, durationB],
+        ];
+        for (const [key, speed, events, duration] of updates) {
+            const existing = findSavedPath(key);
+            if (existing) {
+                savedPaths = savedPaths.map(p =>
+                    p.key === key ? { ...p, speed: speed.map(k => ({...k})), events: events.map(e => ({...e})), duration } : p
+                );
+            }
+        }
+        saveFlash = true;
+        setTimeout(() => saveFlash = false, 1200);
+        console.log('Saved timing for all segments');
+    }
+
+    function updatePieceEvents() {
+        const t = ballProgress;
+        if (t < 1) {
+            const savedA = findSavedPath(pvPathKeyA);
+            const kfs = savedA ? savedA.speed : speedKeyframesA;
+            const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
+            const result = processEvents(pvAnimA, eventsA, pvACfg.type, lf);
+            if (result.changed) pvAnimA = { ...pvAnimA };
+        } else if (t >= 2) {
+            const savedB = findSavedPath(pvPathKeyB);
+            const kfs = savedB ? savedB.speed : speedKeyframesB;
+            const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t - 2)));
+            const result = processEvents(pvAnimB, eventsB, pvBCfg.type, lf);
+            if (result.changed) pvAnimB = { ...pvAnimB };
+        }
+    }
+
     function animate(timestamp: number) {
         if (!isPlaying) return;
         const dt = (timestamp - lastTimestamp) * playbackSpeed;
         lastTimestamp = timestamp;
-        
+
         const sA = findSavedPath(pvPathKeyA);
         const sT = findSavedPath(pvPathKeyTrans);
         const sB = findSavedPath(pvPathKeyB);
-        const totalDuration = (sA?.duration ?? durationA) + (sT?.duration ?? durationT) + (sB?.duration ?? durationB);
-        
-        ballProgress = Math.min(3, ballProgress + (dt / totalDuration) * 3);
+        const durA = sA?.duration ?? durationA;
+        const durT = sT?.duration ?? durationT;
+        const durB = sB?.duration ?? durationB;
+
+        // Advance the correct segment based on where the playhead is
+        if (ballProgress < 1) {
+            ballProgress = Math.min(1, ballProgress + dt / durA);
+        } else if (ballProgress < 2) {
+            ballProgress = Math.min(2, ballProgress + dt / durT);
+        } else {
+            ballProgress = Math.min(3, ballProgress + dt / durB);
+        }
+
+        updatePieceEvents();
         if (ballProgress >= 3) { isPlaying = false; return; }
         animFrameId = requestAnimationFrame(animate);
     }
@@ -680,7 +830,7 @@
                             {#if field.field !== 'centre'}
                                 {@const mp = getMarkerPx(cfg, field)}
                                 <circle cx={cx + mp.x} cy={cy + mp.y}
-                                    r="4" fill={field.color} stroke="white" stroke-width="1" />
+                                    r={dwPx(configs[2]) * 0.05} fill={field.color} stroke="none" />
                             {/if}
                         {/each}
                     </svg>
@@ -826,24 +976,6 @@
                         {#if transformedPath}
                             <span>Squeeze: x={transformedPath.squeeze.scaleX.toFixed(3)}, y={transformedPath.squeeze.scaleY.toFixed(3)}</span>
                         {/if}
-                    </div>
-                {/if}
-
-                {#if pathMode === 'piece'}
-                    <div class="events-section">
-                        <h4>Events <button class="add-btn" onclick={addPathEvent}>+</button></h4>
-                        {#each pathEvents as evt, i}
-                            <div class="event-row">
-                                <input type="number" min="0" max="1" step="0.01" bind:value={pathEvents[i].at} />
-                                <select bind:value={pathEvents[i].event}>
-                                    <option value="startTilt">startTilt</option>
-                                    <option value="startReset">startReset</option>
-                                    <option value="startFlip">startFlip</option>
-                                    <option value="startRotate">startRotate</option>
-                                </select>
-                                <button class="del-btn" onclick={() => removePathEvent(i)}>×</button>
-                            </div>
-                        {/each}
                     </div>
                 {/if}
 
@@ -1005,14 +1137,57 @@
                                 style="cursor: {isEndpoint ? 'default' : 'grab'}; touch-action: none;"
                                 onpointerdown={(e) => handleCurvePointerDown(e, i)} />
                         {/each}
+                        <!-- Event markers -->
+                        {#each getActiveEvents() as evt, i}
+                            {@const ex = curveToSvg(evt.at, 0).x}
+                            <line x1={ex} y1={CURVE_PAD} x2={ex} y2={CURVE_H - CURVE_PAD}
+                                stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.8" />
+                            <text x={ex} y={CURVE_PAD - 4} text-anchor="middle"
+                                fill="#f59e0b" font-size="7">{evt.event.replace('start', '')}</text>
+                            <circle cx={ex} cy={CURVE_PAD - 12} r="5"
+                                fill="#f59e0b" stroke="white" stroke-width="1"
+                                style="cursor: ew-resize; touch-action: none;"
+                                onpointerdown={(e) => handleEventPointerDown(e, i)} />
+                        {/each}
                     </svg>
                     <div class="speed-hint">Click to add · Drag to move · Shift-click to delete</div>
+
+                    <!-- Event controls -->
+                    <div class="events-controls">
+                        <div class="events-header">
+                            <h4>Events</h4>
+                            <button class="add-btn" onclick={addEvent}
+                                disabled={getAvailableEvents(speedSegment === 'pieceA' ? pvACfg.type : speedSegment === 'pieceB' ? pvBCfg.type : '').length === 0}
+                            >+ Add</button>
+                        </div>
+                        {#each getActiveEvents() as evt, i}
+                            <div class="event-row">
+                                <span class="event-at">{evt.at.toFixed(2)}</span>
+                                <select value={evt.event}
+                                    onchange={(e) => {
+                                        const evts = getActiveEvents();
+                                        const newEvts = [...evts];
+                                        newEvts[i] = { ...newEvts[i], event: e.currentTarget.value as PathEvent['event'] };
+                                        setActiveEvents(newEvts);
+                                    }}>
+                                    {#each getAvailableEvents(speedSegment === 'pieceA' ? pvACfg.type : speedSegment === 'pieceB' ? pvBCfg.type : '') as evtType}
+                                        <option value={evtType}>{evtType}</option>
+                                    {/each}
+                                </select>
+                                <button class="del-btn" onclick={() => removeEvent(i)}>×</button>
+                            </div>
+                        {/each}
+                        {#if getActiveEvents().length === 0}
+                            <div class="no-events">No events · Drag ● markers on curve</div>
+                        {/if}
+                    </div>
                 </div>
 
                 <!-- Playback -->
                 <div class="playback">
                     <button onclick={startPreview} disabled={isPlaying}>▶ Play</button>
                     <button onclick={stopPreview}>■ Stop</button>
+                    <button onclick={saveTimingForSegment} class="save-timing-btn">Save Timing</button>
                     <label>Speed <input type="range" min="0.1" max="3" step="0.1" bind:value={playbackSpeed} />
                         <span class="val">{playbackSpeed.toFixed(1)}×</span></label>
                 </div>
@@ -1032,23 +1207,27 @@
                     {/each}
 
                     <!-- Piece A -->
-                    {#if previewPieceAFlip && pvACfg.flippable}
-                        <g transform="translate({pvACx},{pvACy}) scale(-1,1) translate({-pvACx},{-pvACy})">
+                    <g style="transform-origin: {pvACx}px {pvACy}px; transform: rotate({pvAnimA.animRotation}deg); transition: {pvAnimA.transition};">
+                        {#if previewPieceAFlip && pvACfg.flippable}
+                            <g transform="translate({pvACx},{pvACy}) scale(-1,1) translate({-pvACx},{-pvACy})">
+                                <image href={pvACfg.svgPath} x={pvImgA.x} y={pvImgA.y} width={pvImgA.width} height={pvImgA.height} />
+                            </g>
+                        {:else}
                             <image href={pvACfg.svgPath} x={pvImgA.x} y={pvImgA.y} width={pvImgA.width} height={pvImgA.height} />
-                        </g>
-                    {:else}
-                        <image href={pvACfg.svgPath} x={pvImgA.x} y={pvImgA.y} width={pvImgA.width} height={pvImgA.height} />
-                    {/if}
+                        {/if}
+                    </g>
                     <circle cx={pvACx} cy={pvACy} r="2" fill="white" opacity="0.5" />
 
                     <!-- Piece B -->
-                    {#if previewPieceBFlip && pvBCfg.flippable}
-                        <g transform="translate({pvBCx},{pvBCy}) scale(-1,1) translate({-pvBCx},{-pvBCy})">
+                    <g style="transform-origin: {pvBCx}px {pvBCy}px; transform: rotate({pvAnimB.animRotation}deg); transition: {pvAnimB.transition};">
+                        {#if previewPieceBFlip && pvBCfg.flippable}
+                            <g transform="translate({pvBCx},{pvBCy}) scale(-1,1) translate({-pvBCx},{-pvBCy})">
+                                <image href={pvBCfg.svgPath} x={pvImgB.x} y={pvImgB.y} width={pvImgB.width} height={pvImgB.height} />
+                            </g>
+                        {:else}
                             <image href={pvBCfg.svgPath} x={pvImgB.x} y={pvImgB.y} width={pvImgB.width} height={pvImgB.height} />
-                        </g>
-                    {:else}
-                        <image href={pvBCfg.svgPath} x={pvImgB.x} y={pvImgB.y} width={pvImgB.width} height={pvImgB.height} />
-                    {/if}
+                        {/if}
+                    </g>
                     <circle cx={pvBCx} cy={pvBCy} r="2" fill="white" opacity="0.5" />
 
                     <!-- Connection line (cell-fixed entry on B) -->
@@ -1268,4 +1447,16 @@
     .playback label { display: flex; align-items: center; gap: 4px; color: #888; font-size: 11px; }
     .playback input[type="range"] { width: 60px; }
     .chain-svg { background: #111; border: 1px solid #222; border-radius: 4px; display: block; }
+
+    .events-controls { margin-top: 8px; }
+    .events-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .events-header h4 { font-size: 11px; color: #888; margin: 0; }
+    .event-at { font-size: 10px; color: #f59e0b; min-width: 32px; }
+    .no-events { font-size: 9px; color: #444; margin-top: 2px; }
+
+    .save-timing-btn {
+        padding: 5px 12px; background: #1a2e1e; border: 1px solid #4ade80;
+        border-radius: 3px; color: #4ade80; cursor: pointer; font-size: 11px; font-family: inherit;
+    }
+    .save-timing-btn:hover { background: #2a4030; }
 </style>
