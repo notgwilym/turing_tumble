@@ -552,6 +552,31 @@ function handleCurvePointerMove(e: PointerEvent) {
             }
         }
 
+        // Auto-mirror transitions: right↔left
+        if (!direct && key.startsWith('TRANS_')) {
+            const mirroredKey = key.includes('_right_')
+                ? key.replace('_right_', '_left_')
+                : key.replace('_left_', '_right_');
+            if (mirroredKey !== key) {
+                // Don't mirror paths TO gearbit (asymmetric entries)
+                const toPiece = key.split('_').pop();
+                const source = savedPaths.find(p => p.key === mirroredKey);
+                if (source) {
+                    if (!source.d || toPiece === 'gearbit') {
+                        // Duration-only or unsafe to mirror path — copy without mirroring
+                        direct = { ...source, key };
+                    } else {
+                        if (mirrorCache.has(key)) return mirrorCache.get(key);
+                        const cmds = parsePath(source.d);
+                        const mirrored = mirrorPathX(cmds);
+                        const entry = { ...source, key, d: serializePath(mirrored) };
+                        mirrorCache.set(key, entry);
+                        direct = entry;
+                    }
+                }
+            }
+        }
+
         if (!direct) return undefined;
 
         if (flipped) {
