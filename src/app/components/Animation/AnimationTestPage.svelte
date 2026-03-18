@@ -153,11 +153,32 @@
     let pathInputD = $state('');
     let pathEvents = $state<PathEvent[]>([]);
 
+    function getExitDirForPath(pieceType: string, entryDir: 'left' | 'right'): 'left' | 'right' {
+        switch (pieceType) {
+            case 'ramp':
+                // Ramp always exits facing direction (right when unflipped)
+                return 'right';
+            case 'bit':
+            case 'gearbit':
+                // Exit depends on arm/gear state, not entry. 
+                // Default unflipped = exits right
+                return 'right';
+            case 'crossover':
+                // Passes through: left→left, right→right
+                return entryDir;
+            case 'interceptor':
+                // Ball stops — but path still needs an endpoint
+                return entryDir;
+            default:
+                return entryDir === 'left' ? 'right' : 'left';
+        }
+    }
+
     const calculatedEndpoints = $derived.by(() => {
         if (pathMode === 'piece') {
             const pc = configs[pathPieceIdx];
             const entry = getEntryPoint(pc, pathEntryDir);
-            const exitDir: 'left' | 'right' = pathEntryDir === 'left' ? 'right' : 'left';
+            const exitDir = getExitDirForPath(pc.type, pathEntryDir);
             const exit = getExitPoint(pc, exitDir, false);
             return { start: entry, end: exit, label: `${pc.type} entry-${pathEntryDir}` };
         } else {
@@ -576,7 +597,7 @@ function handleCurvePointerMove(e: PointerEvent) {
         if (previewPieceBFlip && pvBCfg.flippable) entry = entry === 'left' ? 'right' : 'left';
         return `ANIM_${pvBCfg.type}_${entry}`;
     });
-    
+
     // Ball position — uses saved paths if available, else linear fallback
     const ballPos = $derived.by(() => {
         const aEntry = ptPx(pvACfg, getEntryPoint(pvACfg, pvAEntryDir));
