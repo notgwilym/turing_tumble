@@ -35,19 +35,19 @@ export interface PieceEventDef {
  */
 export const PIECE_EVENT_DEFS: Record<string, Record<string, PieceEventDef>> = {
     bit: {
-        startFlip: { rotation: 90, durationMs: 150, easing: 'ease-out' },
+        startFlip: { rotation: 90, durationMs: 400, easing: 'ease-in' },
     },
     ramp: {
-        startTilt:  { rotation: 90, durationMs: 600, easing: 'ease-out' },
-        startReset: { rotation: 0,  durationMs: 400, easing: 'ease-in-out' },
+        startTilt:  { rotation: 90, durationMs: 600, easing: 'ease-in' },
+        startReset: { rotation: 0,  durationMs: 400, easing: 'ease-in' },
     },
     crossover: {},
     interceptor: {},
     gear: {
-        startRotate: { rotation: 90, durationMs: 150, easing: 'ease-out' },
+        startRotate: { rotation: 90, durationMs: 400, easing: 'ease-out' },
     },
     gearbit: {
-        startRotate: { rotation: 90, durationMs: 150, easing: 'ease-out' },
+        startRotate: { rotation: 90, durationMs: 400, easing: 'ease-out' },
     },
 };
 

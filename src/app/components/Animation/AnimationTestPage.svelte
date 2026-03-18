@@ -289,7 +289,7 @@
 
         const sT = untrack(() => findSavedPath(keyT));
         if (sT) { speedKeyframesT = sT.speed.map(k => ({ ...k })); durationT = sT.duration; }
-        else { speedKeyframesT = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationT = 200; }
+        else { speedKeyframesT = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationT = 50; }
 
         const sB = untrack(() => findSavedPath(keyB));
         if (sB) { speedKeyframesB = sB.speed.map(k => ({ ...k })); durationB = sB.duration; }
@@ -1305,7 +1305,7 @@ function handleCurvePointerMove(e: PointerEvent) {
 
                     <!-- Ball -->
                     <circle cx={ballPos.x} cy={ballPos.y}
-                        r="5" fill="#ef4444" stroke="white" stroke-width="0"
+                        r="5" fill="#f7ffff" stroke="white" stroke-width="0"
                         opacity={isPlaying || ballProgress > 0 ? 1 : 0.3} />
                 </svg>
             </div>
@@ -1395,7 +1395,7 @@ function handleCurvePointerMove(e: PointerEvent) {
     .path-previews { flex: 1; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
     .mode-toggle { display: flex; gap: 0; margin-bottom: 12px; }
     .mode-toggle button {
-        padding: 5px 12px; background: #1a1a2e; border: 1px solid #333;
+        padding: 5px 12px; background: #1a2d2e; border: 1px solid #333;
         color: #888; cursor: pointer; font-size: 11px; font-family: inherit;
     }
     .mode-toggle button:first-child { border-radius: 3px 0 0 3px; }
