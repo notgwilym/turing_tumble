@@ -622,7 +622,7 @@ function handleCurvePointerMove(e: PointerEvent) {
             kfs = savedA ? savedA.speed : speedKeyframesA;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
-            if (savedA) {
+            if (savedA && savedA.d) {
                 // Path is in piece-fraction coords (offsets from centre).
                 // Sample → multiply by display size → add cell centre.
                 const pt = samplePath(savedA.d, lf);
@@ -644,7 +644,7 @@ function handleCurvePointerMove(e: PointerEvent) {
             kfs = savedT ? savedT.speed : speedKeyframesT;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
-            if (savedT) {
+            if (savedT && savedT.d) {
                 // Transition path origin is at A's exit. Coords are grid fractions.
                 const pt = samplePath(savedT.d, lf);
                 return {
@@ -665,7 +665,7 @@ function handleCurvePointerMove(e: PointerEvent) {
             kfs = savedB ? savedB.speed : speedKeyframesB;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
-            if (savedB) {
+            if (savedB && savedB.d) {
                 const pt = samplePath(savedB.d, lf);
                 return {
                     x: pvBCx + pt.x * dwPx(pvBCfg),
@@ -699,20 +699,28 @@ function handleCurvePointerMove(e: PointerEvent) {
 
     function saveTimingForSegment() {
         mirrorCache.clear();
-        const updates: [string, SpeedKeyframe[], PathEvent[], number][] = [
-            [pvPathKeyA, speedKeyframesA, eventsA, durationA],
-            [pvPathKeyTrans, speedKeyframesT, eventsT, durationT],
-            [pvPathKeyB, speedKeyframesB, eventsB, durationB],
+        const updates: [string, 'piece' | 'transition', SpeedKeyframe[], PathEvent[], number][] = [
+            [pvPathKeyA, 'piece', speedKeyframesA, eventsA, durationA],
+            [pvPathKeyTrans, 'transition', speedKeyframesT, eventsT, durationT],
+            [pvPathKeyB, 'piece', speedKeyframesB, eventsB, durationB],
         ];
         const seen = new Set<string>();
-        for (const [key, speed, events, duration] of updates) {
-            if (seen.has(key)) continue; // don't overwrite with later segment's defaults
+        for (const [key, mode, speed, events, duration] of updates) {
+            if (seen.has(key)) continue;
             seen.add(key);
             const existing = findSavedPath(key);
             if (existing) {
                 savedPaths = savedPaths.map(p =>
                     p.key === key ? { ...p, speed: speed.map(k => ({...k})), events: events.map(e => ({...e})), duration } : p
                 );
+            } else {
+                // Create duration-only entry (no path)
+                savedPaths = [...savedPaths, {
+                    key, mode, d: '',
+                    speed: speed.map(k => ({...k})),
+                    events: events.map(e => ({...e})),
+                    duration,
+                }];
             }
         }
         saveFlash = true;
