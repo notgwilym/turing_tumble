@@ -242,7 +242,7 @@
     let speedKeyframesT = $state<SpeedKeyframe[]>([{ t: 0, l: 0 }, { t: 1, l: 1 }]);
     let speedKeyframesB = $state<SpeedKeyframe[]>([{ t: 0, l: 0 }, { t: 1, l: 1 }]);
     let durationA = $state(400);
-    let durationT = $state(200);
+    let durationT = $state(100);
     let durationB = $state(400);
 
     function getActiveKf(): SpeedKeyframe[] {
@@ -256,6 +256,7 @@
     }
     // Sync editor state from saved paths when preview setup changes
     $effect(() => {
+        console.log('SPEED EFFECT FIRED', pvPathKeyA);
         // Only re-run when piece selection changes (keys change)
         const keyA = pvPathKeyA;
         const keyT = pvPathKeyTrans;
@@ -263,7 +264,7 @@
 
         const sA = untrack(() => findSavedPath(keyA));
         if (sA) { speedKeyframesA = sA.speed.map(k => ({ ...k })); durationA = sA.duration; }
-        else { speedKeyframesA = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationA = 400; }
+        else { speedKeyframesA = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationA = 1000; }
 
         const sT = untrack(() => findSavedPath(keyT));
         if (sT) { speedKeyframesT = sT.speed.map(k => ({ ...k })); durationT = sT.duration; }
@@ -271,7 +272,7 @@
 
         const sB = untrack(() => findSavedPath(keyB));
         if (sB) { speedKeyframesB = sB.speed.map(k => ({ ...k })); durationB = sB.duration; }
-        else { speedKeyframesB = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationB = 400; }
+        else { speedKeyframesB = [{ t: 0, l: 0 }, { t: 1, l: 1 }]; durationB = 1000; }
     });
 
     // Per-segment events (edited in Tab 3)
@@ -291,6 +292,8 @@
 
     // Sync events from saved paths
     $effect(() => {
+        console.log('EVENTS EFFECT FIRED', pvPathKeyA);
+
         const keyA = pvPathKeyA;
         const keyT = pvPathKeyTrans;
         const keyB = pvPathKeyB;
@@ -648,13 +651,15 @@ function handleCurvePointerMove(e: PointerEvent) {
     }
 
     function saveTimingForSegment() {
-        // Save speed + events + duration for all segments that have a path
         const updates: [string, SpeedKeyframe[], PathEvent[], number][] = [
             [pvPathKeyA, speedKeyframesA, eventsA, durationA],
             [pvPathKeyTrans, speedKeyframesT, eventsT, durationT],
             [pvPathKeyB, speedKeyframesB, eventsB, durationB],
         ];
+        const seen = new Set<string>();
         for (const [key, speed, events, duration] of updates) {
+            if (seen.has(key)) continue; // don't overwrite with later segment's defaults
+            seen.add(key);
             const existing = findSavedPath(key);
             if (existing) {
                 savedPaths = savedPaths.map(p =>
@@ -664,7 +669,6 @@ function handleCurvePointerMove(e: PointerEvent) {
         }
         saveFlash = true;
         setTimeout(() => saveFlash = false, 1200);
-        console.log('Saved timing for all segments');
     }
 
     function updatePieceEvents() {
