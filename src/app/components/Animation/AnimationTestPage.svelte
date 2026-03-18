@@ -531,7 +531,27 @@ function handleCurvePointerMove(e: PointerEvent) {
     // Non-reactive cache for generated mirror paths
     const mirrorCache = new Map<string, SavedPath>();
     function findSavedPath(key: string, flipped: boolean = false): SavedPath | undefined {
-        const direct = savedPaths.find(p => p.key === key);
+        let direct = savedPaths.find(p => p.key === key);
+
+        // Auto-mirror: crossover/interceptor right from left
+        if (!direct && (key.includes('crossover') || key.includes('interceptor'))) {
+            const mirroredKey = key.replace('_right', '_left');
+            if (mirroredKey !== key) {
+                if (mirrorCache.has(key)) return mirrorCache.get(key);
+                const source = savedPaths.find(p => p.key === mirroredKey);
+                if (source && source.d) {
+                    const cmds = parsePath(source.d);
+                    const mirrored = mirrorPathX(cmds);
+                    const entry = { ...source, key, d: serializePath(mirrored) };
+                    mirrorCache.set(key, entry);
+                    direct = entry;
+                } else if (source) {
+                    // Duration-only entry, just copy with new key
+                    direct = { ...source, key };
+                }
+            }
+        }
+
         if (!direct) return undefined;
 
         if (flipped) {
