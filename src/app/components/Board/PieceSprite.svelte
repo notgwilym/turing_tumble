@@ -94,12 +94,8 @@
         if (piece instanceof Bit) {
             return piece.orientation === Orientation.Left ? 90 : 0;
         }
-        if (piece instanceof GearBit) {
+        if (piece instanceof GearBit || piece instanceof NormalGear) {
             return piece.rotation === GearRotation.Clockwise ? 90 : 0;
-        }
-        if (piece instanceof NormalGear) {
-            const base = piece.rotation === GearRotation.Clockwise ? 90 : 0;
-            return base + 22.5;
         }
         return 0;
     });
@@ -156,6 +152,7 @@
         height: {dh}px;
         transform: {transform};
         transform-origin: {transformOrigin};
+        z-index: {pieceType === 'gear' ? 0 : 1};
     "
     draggable="true"
     onkeydown={(e) => e.key === 'Enter' || e.key === ' ' ? handleClick() : null}
