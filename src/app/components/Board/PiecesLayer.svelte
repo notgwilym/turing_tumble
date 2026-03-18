@@ -8,12 +8,20 @@
         globalScale,
         onToggle,
         onRemove,
+        onDragStart,
+        onDragEnd,
+        dragHoverCell,
+        dragOriginCell,
     }: {
         pieces: (Piece | null)[][];
         gridSize: number;
         globalScale: number;
         onToggle?: (x: number, y: number) => void;
         onRemove?: (x: number, y: number) => void;
+        onDragStart?: (x: number, y: number) => void;
+        onDragEnd?: () => void;
+        dragHoverCell?: { x: number; y: number } | null;
+        dragOriginCell?: { x: number; y: number } | null;
     } = $props();
 </script>
 
@@ -27,6 +35,10 @@
                     {globalScale}
                     {onToggle}
                     {onRemove}
+                    {onDragStart}
+                    {onDragEnd}
+                    {dragHoverCell}
+                    {dragOriginCell}
                 />
             {/if}
         {/each}

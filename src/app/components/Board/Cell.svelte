@@ -30,40 +30,64 @@
         }
     }
 
-    const isDroppable = $derived(
+    /** Is this cell a potential drop target at all? (Peg or SlotPeg) */
+    const isPegOrSlot = $derived(
         cellType === CellType.SlotPeg || cellType === CellType.Peg
     );
 
     let isHovering = $state(false);
+    let isValidForDraggedPiece = $state(false);
 
+    // ALL cells accept dragover so the entire board is a drop zone.
+    // But we determine validity per-piece using MIME type markers.
     function handleDragOver(e: DragEvent) {
-        if (!isDroppable) return;
         e.preventDefault();
-        // Accept both toolbar copies and board moves
         const effect = e.dataTransfer!.effectAllowed;
         e.dataTransfer!.dropEffect = effect === 'move' ? 'move' : 'copy';
+
         isHovering = true;
+
+        // Determine validity based on piece category + cell type
+        const types = e.dataTransfer!.types;
+        console.log('TYPES:', JSON.stringify(Array.from(types)));
+
+        const isGearPiece = Array.from(types).includes('application/piece-gear');
+        // const isSlotPiece = types.includes('application/piece-slot');
+
+        if (isGearPiece) {
+            // NormalGear: valid on Peg or SlotPeg
+            isValidForDraggedPiece = cellType === CellType.Peg || cellType === CellType.SlotPeg;
+        } else {
+            // Everything else: valid on SlotPeg only
+            isValidForDraggedPiece = cellType === CellType.SlotPeg;
+        }
     }
 
     function handleDragLeave() {
         isHovering = false;
+        isValidForDraggedPiece = false;
     }
 
     function handleDrop(e: DragEvent) {
         e.preventDefault();
         isHovering = false;
-        if (!isDroppable || !onPieceDrop) return;
+        isValidForDraggedPiece = false;
+
+        // Only place on valid targets
+        if (!isPegOrSlot || !onPieceDrop) return;
 
         const payload = e.dataTransfer?.getData('application/turing-piece');
         if (!payload) return;
 
+        e.stopPropagation(); // prevent Board catch-all from double-firing
         onPieceDrop(x, y, payload);
     }
 </script>
 
 <div
     class="cell {cellClass}"
-    class:hovering={isHovering}
+    class:hovering-valid={isHovering && isValidForDraggedPiece}
+    class:hovering-invalid={isHovering && !isValidForDraggedPiece && isPegOrSlot}
     style="
         left: {left}px;
         top: {top}px;
@@ -105,17 +129,41 @@
         border: 1px dashed rgba(100, 150, 200, 0.3);
     }
 
-    .slot-peg.hovering {
+    /* ── Valid hover: green highlight across entire cell ── */
+    .slot-peg.hovering-valid {
         background: rgba(100, 220, 100, 0.25);
         border-color: rgba(100, 220, 100, 0.7);
         border-style: solid;
     }
 
-    .peg.hovering {
-        background: rgba(190, 38, 77, 0.25);
-        outline: 2px solid rgba(190, 38, 77, 0.5);
-        border-radius: 50%;
+    .peg.hovering-valid {
+        background: rgba(100, 220, 100, 0.25);
+        outline: 2px solid rgba(100, 220, 100, 0.5);
     }
+
+    /* ── Invalid hover on a Peg/SlotPeg: prohibited indicator ── */
+    .hovering-invalid {
+        background: rgba(220, 60, 60, 0.1);
+    }
+    .hovering-invalid::after {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid rgba(220, 60, 60, 0.6);
+        /* Diagonal line through circle */
+        background:
+            linear-gradient(
+                to top right,
+                transparent calc(50% - 1px),
+                rgba(220, 60, 60, 0.6) calc(50% - 1px),
+                rgba(220, 60, 60, 0.6) calc(50% + 1px),
+                transparent calc(50% + 1px)
+            );
+    }
+
+    /* Blanks and exits: no indicator at all when hovered during drag */
 
     .left-exit, .right-exit {
         background: rgba(200, 100, 50, 0.2);

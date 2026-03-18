@@ -50,6 +50,10 @@
             rotation: config.rotation,
         });
         e.dataTransfer!.setData('application/turing-piece', payload);
+        e.dataTransfer!.setData(
+            config.type === 'NormalGear' ? 'application/piece-gear' : 'application/piece-slot',
+            ''
+        );
         e.dataTransfer!.effectAllowed = 'copy';
     }
 </script>

@@ -1,89 +1,78 @@
 <script lang="ts">
-    import type { Piece } from '@engine/pieces/Piece';
-    import { FlippablePiece, Orientation } from '@engine/pieces/Piece';
+    import { Orientation, FlippablePiece } from '@engine/pieces/Piece';
+    import { Gear, NormalGear, GearBit, GearRotation } from '@engine/pieces/Gear';
     import { Bit } from '@engine/pieces/Bit';
     import { Ramp } from '@engine/pieces/Ramp';
-    import { Crossover } from '@engine/pieces/Crossover';
-    import { Interceptor } from '@engine/pieces/Interceptor';
-    import { Gear, NormalGear, GearBit, GearRotation } from '@engine/pieces/Gear';
+    import type { Piece } from '@engine/pieces/Piece';
+
     import {
         PIECE_ANIM_CONFIGS,
         getDisplayWidthPx,
         getDisplayHeightPx,
-        type PieceAnimConfig,
     } from '../Animation/PieceAnimConfig';
 
-    let { 
+    let {
         piece,
         gridSize,
         globalScale,
         onToggle,
         onRemove,
+        onDragStart,
+        onDragEnd,
+        dragHoverCell,
+        dragOriginCell,
     }: {
         piece: Piece;
         gridSize: number;
         globalScale: number;
         onToggle?: (x: number, y: number) => void;
         onRemove?: (x: number, y: number) => void;
+        onDragStart?: (x: number, y: number) => void;
+        onDragEnd?: () => void;
+        dragHoverCell?: { x: number; y: number } | null;
+        dragOriginCell?: { x: number; y: number } | null;
     } = $props();
 
-    // ─── Piece type → config lookup ──────────────────────────────────────────
+    // ─── Piece type key ──────────────────────────────────────────────────────
 
     function getPieceType(p: Piece): string {
-        if (p instanceof Bit)         return 'bit';
-        if (p instanceof Ramp)        return 'ramp';
-        if (p instanceof Crossover)   return 'crossover';
-        if (p instanceof Interceptor) return 'interceptor';
-        if (p instanceof GearBit)     return 'gearbit';
-        if (p instanceof NormalGear)  return 'gear';
-        return 'bit';
+        if (p instanceof Bit) return 'bit';
+        if (p instanceof Ramp) return 'ramp';
+        if (p instanceof GearBit) return 'gearbit';
+        if (p instanceof NormalGear) return 'gear';
+        return p.constructor.name.toLowerCase();
     }
-
-    function getAnimConfig(p: Piece): PieceAnimConfig {
-        const type = getPieceType(p);
-        return PIECE_ANIM_CONFIGS.find(c => c.type === type) ?? PIECE_ANIM_CONFIGS[0];
-    }
-
-    // ─── Derived values ──────────────────────────────────────────────────────
 
     const pieceType = $derived(getPieceType(piece));
-    const animCfg  = $derived(getAnimConfig(piece));
-    const svgPath  = $derived(animCfg.svgPath);
 
-    const dw = $derived(getDisplayWidthPx(animCfg, globalScale, gridSize));
-    const dh = $derived(getDisplayHeightPx(animCfg, globalScale, gridSize));
+    const isBeingReplacedHover = $derived(
+        dragHoverCell != null &&
+        dragHoverCell.x === piece.x && dragHoverCell.y === piece.y &&
+        !(dragOriginCell && dragOriginCell.x === piece.x && dragOriginCell.y === piece.y)
+    );
+
+    // ─── SVG path ────────────────────────────────────────────────────────────
+
+    const animConfig = $derived(PIECE_ANIM_CONFIGS.find(c => c.type === pieceType));
+    const svgPath = $derived(animConfig?.svgPath ?? `/pieces/${pieceType}.svg`);
+
+    // ─── Sizing from PieceAnimConfig ─────────────────────────────────────────
+
+    const dw = $derived(animConfig ? getDisplayWidthPx(animConfig, globalScale, gridSize) : gridSize);
+    const dh = $derived(animConfig ? getDisplayHeightPx(animConfig, globalScale, gridSize) : gridSize);
+
+    const pegX = $derived(animConfig ? animConfig.centre.x * dw : dw / 2);
+    const pegY = $derived(animConfig ? animConfig.centre.y * dh : dh / 2);
 
     const cellCentreX = $derived(piece.x * gridSize + gridSize / 2);
     const cellCentreY = $derived(piece.y * gridSize + gridSize / 2);
 
-    const pegX = $derived(animCfg.centre.x * dw);
-    const pegY = $derived(animCfg.centre.y * dh);
-
     const left = $derived(cellCentreX - pegX);
     const top  = $derived(cellCentreY - pegY);
 
-    // ─── Visual model ────────────────────────────────────────────────────────
-    //
-    // Two independent layers, both around the peg hole:
-    //
-    // FACING (scaleX): left = scaleX(-1), right = scaleX(1)
-    //   Set during SETUP. Mirrors the SVG.
-    //   Left-facing animation paths are just mirrored right-facing paths.
-    //
-    // STATE (rotation): the piece's mechanical state.
-    //   This is what gets ANIMATED when the ball passes.
-    //   - Bit: 0° or 90° (arm position)
-    //   - GearBit: 0° or 90° (gear state)
-    //   - NormalGear: 0° or 90° + 22.5° tooth offset
-    //   - Ramp: 0° at rest, tilts during animation then resets
-    //   - Crossover/Interceptor: always 0°
-    //
-    // Transform: scaleX first, then rotate. Both at peg hole origin.
+    // ─── Transform ───────────────────────────────────────────────────────────
 
     const facingScaleX = $derived.by(() => {
-        // Only Ramp has a meaningful facing direction (channel slopes one way).
-        // Bit's orientation is expressed purely through rotation (arm position).
-        // GearBit facing is handled separately if needed.
         if (piece instanceof Ramp) {
             return piece.orientation === Orientation.Left ? -1 : 1;
         }
@@ -119,11 +108,26 @@
                                           'Drag to move'
     );
 
+    // ─── Drag state ──────────────────────────────────────────────────────────
+
+    let isFadingOut = $state(false);
+
+    // Reusable 1×1 transparent canvas for drag ghost
+    let ghostCanvas: HTMLCanvasElement | null = null;
+    function getGhost(): HTMLCanvasElement {
+        if (!ghostCanvas) {
+            ghostCanvas = document.createElement('canvas');
+            ghostCanvas.width = 1;
+            ghostCanvas.height = 1;
+        }
+        return ghostCanvas;
+    }
+
     function handleClick() {
         if (isTogglable) onToggle?.(piece.x, piece.y);
     }
 
-    function handleDragStart(e: DragEvent) {
+   function handleDragStart(e: DragEvent) {
         const payload = JSON.stringify({
             pieceType,
             orientation:  piece instanceof FlippablePiece ? piece.orientation  : undefined,
@@ -131,19 +135,44 @@
             fromX: piece.x,
             fromY: piece.y,
         });
-        e.dataTransfer!.setData('application/turing-piece', payload);
         e.dataTransfer!.effectAllowed = 'move';
+        e.dataTransfer!.setData('application/turing-piece', payload);
+        e.dataTransfer!.setData(
+            pieceType === 'gear' ? 'application/piece-gear' : 'application/piece-slot',
+            ''
+        );
         e.stopPropagation();
+
+        onDragStart?.(piece.x, piece.y);
     }
 
     function handleDragEnd(e: DragEvent) {
-        if (e.dataTransfer!.dropEffect === 'none') onRemove?.(piece.x, piece.y);
+        onDragEnd?.();
+
+        // Component may have been destroyed if the drop already moved/removed the piece
+        if (!piece) return;
+
+        const boardEl = (e.target as HTMLElement).closest('[data-board-container]');
+        if (boardEl) {
+            const rect = boardEl.getBoundingClientRect();
+            const inside =
+                e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top  && e.clientY <= rect.bottom;
+
+            if (!inside) {
+                isFadingOut = true;
+                setTimeout(() => {
+                    onRemove?.(piece.x, piece.y);
+                }, 400);
+            }
+        }
     }
 </script>
 
 <div
     class="piece {pieceType}"
-    class:toggleable={isTogglable}
+    class:fading-out={isFadingOut}
+    class:replacing={isBeingReplacedHover}
     style="
         position: absolute;
         left: {left}px;
@@ -175,18 +204,31 @@
         pointer-events: auto;
         cursor: grab;
         border-radius: 6px;
+        user-select: none;
+        -webkit-user-select: none;
     }
     .piece:active { cursor: grabbing; }
-    .piece.toggleable:hover {
-        outline: 2px solid rgba(255, 230, 50, 0.7);
-        outline-offset: -3px;
-    }
+
     .piece img {
         width: 100%;
         height: 100%;
         user-select: none;
+        -webkit-user-select: none;
         pointer-events: none;
     }
+
+    /* Fade out when removed by dragging off board */
+    .piece.fading-out {
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        pointer-events: none;
+    }
+
+    .piece.replacing {
+        opacity: 0.4;
+        transition: opacity 0.15s ease;
+    }
+
     .bit img         { filter: drop-shadow(0 2px 4px rgba(0, 186, 254, 0.3)); }
     .ramp img        { filter: drop-shadow(0 2px 4px rgba(0, 200, 111, 0.3)); }
     .crossover img   { filter: drop-shadow(0 2px 4px rgba(255, 114, 59, 0.3)); }

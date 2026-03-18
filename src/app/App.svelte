@@ -75,20 +75,21 @@
     //   3. Place fresh piece at new coordinates.
 
     function handlePieceDrop(toX: number, toY: number, payloadJson: string) {
+    try {
+        const { pieceType, orientation, rotation, fromX, fromY } = JSON.parse(payloadJson) as {
+            pieceType: string;
+            orientation?: Orientation;
+            rotation?: GearRotation;
+            fromX?: number;
+            fromY?: number;
+        };
+
+        const isMove = fromX !== undefined && fromY !== undefined;
+        if (isMove && fromX === toX && fromY === toY) return; // dropped on itself
+
+        if (isMove) engine.removePiece(fromX!, fromY!);
+
         try {
-            const { pieceType, orientation, rotation, fromX, fromY } = JSON.parse(payloadJson) as {
-                pieceType: string;
-                orientation?: Orientation;
-                rotation?: GearRotation;
-                fromX?: number;
-                fromY?: number;
-            };
-
-            const isMove = fromX !== undefined && fromY !== undefined;
-            if (isMove && fromX === toX && fromY === toY) return; // dropped on itself
-
-            if (isMove) engine.removePiece(fromX!, fromY!);
-
             const existing = engine.getBoard().getPieceAt(toX, toY);
             if (existing) engine.removePiece(toX, toY);
 
@@ -96,10 +97,18 @@
             if (piece) engine.addPiece(piece);
 
             showError(null);
-        } catch (err) {
-            showError(err instanceof Error ? err.message : String(err));
+        } catch (placeErr) {
+            // Placement failed — restore piece at origin if it was a move
+            if (isMove) {
+                const restored = createPiece(pieceType, fromX!, fromY!, orientation, rotation);
+                if (restored) engine.addPiece(restored);
+            }
+            showError(placeErr instanceof Error ? placeErr.message : String(placeErr));
         }
+    } catch (err) {
+        showError(err instanceof Error ? err.message : String(err));
     }
+}
 
     // ─── Toggle: flip (Bit/Ramp) or turn gear set (GearBit) ──────────────────
     //
@@ -170,7 +179,7 @@
     function showError(msg: string | null) {
         placementError = msg;
         if (errorTimeout) clearTimeout(errorTimeout);
-        if (msg) errorTimeout = setTimeout(() => { placementError = null; }, 3000);
+        if (msg) errorTimeout = setTimeout(() => { placementError = null; }, 2000);
     }
 
     // ─── Initial board setup ──────────────────────────────────────────────────
@@ -223,10 +232,6 @@
                     />
                 </div>
 
-                {#if placementError}
-                    <div class="error-toast" role="alert">⚠️ {placementError}</div>
-                {/if}
-
                 <div class="board-display">
                     <Board
                         board={gameState.board}
@@ -251,6 +256,10 @@
             </div>
         </div>
     </main>
+
+    {#if placementError}
+        <div class="error-toast" role="alert">{placementError}</div>
+    {/if}
 
 {/if}
 
@@ -290,18 +299,30 @@
     .board-display { display: flex; justify-content: center; }
 
     .error-toast {
-        background: rgba(220, 60, 60, 0.85);
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        background: rgba(220, 60, 60, 0.92);
         color: #fff;
-        padding: 0.5rem 1.2rem;
-        border-radius: 6px;
+        padding: 0.6rem 1.4rem;
+        border-radius: 8px;
         font-size: 0.875rem;
-        margin-bottom: 0.5rem;
-        animation: fadeIn 0.2s ease;
+        font-weight: 500;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        animation: toastIn 0.25s ease, toastOut 0.4s ease 1.6s forwards;
+        pointer-events: none;
     }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-6px); }
-        to   { opacity: 1; transform: translateY(0); }
+ 
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+        to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+ 
+    @keyframes toastOut {
+        from { opacity: 1; }
+        to   { opacity: 0; transform: translateX(-50%) translateY(8px); }
     }
 
     .debug-section { margin-top: 1.5rem; }
