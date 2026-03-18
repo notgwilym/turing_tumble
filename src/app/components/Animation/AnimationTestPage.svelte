@@ -366,6 +366,7 @@
 
     function savePath() {
         if (!transformedPath) return;
+        mirrorCache.clear();
         const key = pathMode === 'piece'
             ? `ANIM_${configs[pathPieceIdx].type}_${pathEntryDir}`
             : `TRANS_${configs[pathFromIdx].type}_${pathFromExitDir}_${configs[pathToIdx].type}`;
@@ -697,6 +698,7 @@ function handleCurvePointerMove(e: PointerEvent) {
     }
 
     function saveTimingForSegment() {
+        mirrorCache.clear();
         const updates: [string, SpeedKeyframe[], PathEvent[], number][] = [
             [pvPathKeyA, speedKeyframesA, eventsA, durationA],
             [pvPathKeyTrans, speedKeyframesT, eventsT, durationT],
