@@ -38,7 +38,7 @@ export const PIECE_EVENT_DEFS: Record<string, Record<string, PieceEventDef>> = {
         startFlip: { rotation: 90, durationMs: 150, easing: 'ease-out' },
     },
     ramp: {
-        startTilt:  { rotation: 90, durationMs: 500, easing: 'ease-out' },
+        startTilt:  { rotation: 90, durationMs: 600, easing: 'ease-out' },
         startReset: { rotation: 0,  durationMs: 400, easing: 'ease-in-out' },
     },
     crossover: {},

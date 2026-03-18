@@ -231,7 +231,7 @@
             d: p.pathD,
             events: p.events ?? [],
             speed: p.speed ?? [{ t: 0, l: 0 }, { t: 1, l: 1 }],
-            duration: p.duration ?? 400,
+            duration: p.duration ?? 1000,
         }))
     );
     let saveFlash = $state(false);
@@ -1249,7 +1249,7 @@ function handleCurvePointerMove(e: PointerEvent) {
 
                     <!-- Ball -->
                     <circle cx={ballPos.x} cy={ballPos.y}
-                        r="6" fill="#ef4444" stroke="white" stroke-width="1.5"
+                        r="5" fill="#ef4444" stroke="white" stroke-width="0"
                         opacity={isPlaying || ballProgress > 0 ? 1 : 0.3} />
                 </svg>
             </div>
