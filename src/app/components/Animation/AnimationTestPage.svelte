@@ -34,6 +34,7 @@
         toAbsolute,
         transformPathToEndpoints,
         getSqueeze,
+        mirrorPathX,
     } from './svgPathUtils';
 
     import { untrack } from 'svelte';
@@ -507,8 +508,24 @@ function handleCurvePointerMove(e: PointerEvent) {
     }
 
     // Look up a saved path by key
-    function findSavedPath(key: string): SavedPath | undefined {
-        return savedPaths.find(p => p.key === key);
+
+    // Non-reactive cache for generated mirror paths
+    const mirrorCache = new Map<string, SavedPath>();
+    function findSavedPath(key: string, flipped: boolean = false): SavedPath | undefined {
+        const direct = savedPaths.find(p => p.key === key);
+        if (!direct) return undefined;
+
+        if (flipped) {
+            const flipKey = key + '_flipped';
+            if (mirrorCache.has(flipKey)) return mirrorCache.get(flipKey);
+            const cmds = parsePath(direct.d);
+            const mirrored = mirrorPathX(cmds);
+            const entry = { ...direct, key: flipKey, d: serializePath(mirrored) };
+            mirrorCache.set(flipKey, entry);
+            return entry;
+        }
+
+        return direct;
     }
 
     // ─── Preview SVG layout (FIXED SIZE to prevent feedback loop) ────────────
@@ -548,10 +565,18 @@ function handleCurvePointerMove(e: PointerEvent) {
 
     const pvAEntryDir = $derived<'left' | 'right'>(previewDir === 'right' ? 'left' : 'right');
 
-    const pvPathKeyA = $derived(`ANIM_${pvACfg.type}_${pvAEntryDir}`);
+    const pvPathKeyA = $derived.by(() => {
+        let entry = pvAEntryDir;
+        if (previewPieceAFlip && pvACfg.flippable) entry = entry === 'left' ? 'right' : 'left';
+        return `ANIM_${pvACfg.type}_${entry}`;
+    });
     const pvPathKeyTrans = $derived(`TRANS_${pvACfg.type}_${pvAExitDir}_${pvBCfg.type}`);
-    const pvPathKeyB = $derived(`ANIM_${pvBCfg.type}_${pvBEntryDir}`);
-
+    const pvPathKeyB = $derived.by(() => {
+        let entry = pvBEntryDir;
+        if (previewPieceBFlip && pvBCfg.flippable) entry = entry === 'left' ? 'right' : 'left';
+        return `ANIM_${pvBCfg.type}_${entry}`;
+    });
+    
     // Ball position — uses saved paths if available, else linear fallback
     const ballPos = $derived.by(() => {
         const aEntry = ptPx(pvACfg, getEntryPoint(pvACfg, pvAEntryDir));
@@ -571,7 +596,7 @@ function handleCurvePointerMove(e: PointerEvent) {
         if (ballProgress < 1) {
             // ─── Segment 1: piece A path ─────────────────────────────────
             t = ballProgress;
-            const savedA = findSavedPath(pvPathKeyA);
+            const savedA = findSavedPath(pvPathKeyA, previewPieceAFlip);
             kfs = savedA ? savedA.speed : speedKeyframesA;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
@@ -614,7 +639,7 @@ function handleCurvePointerMove(e: PointerEvent) {
         } else {
             // ─── Segment 3: piece B path ─────────────────────────────────
             t = ballProgress - 2;
-            const savedB = findSavedPath(pvPathKeyB);
+            const savedB = findSavedPath(pvPathKeyB, previewPieceBFlip);
             kfs = savedB ? savedB.speed : speedKeyframesB;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
 
@@ -674,16 +699,16 @@ function handleCurvePointerMove(e: PointerEvent) {
     function updatePieceEvents() {
         const t = ballProgress;
         if (t < 1) {
-            const savedA = findSavedPath(pvPathKeyA);
+            const savedA = findSavedPath(pvPathKeyA, previewPieceAFlip);
             const kfs = savedA ? savedA.speed : speedKeyframesA;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t)));
-            const result = processEvents(pvAnimA, eventsA, pvACfg.type, lf);
+            const result = processEvents(pvAnimA, eventsA, pvACfg.type, lf, previewPieceAFlip);
             if (result.changed) pvAnimA = { ...pvAnimA };
         } else if (t >= 2) {
-            const savedB = findSavedPath(pvPathKeyB);
+            const savedB = findSavedPath(pvPathKeyB, previewPieceBFlip);
             const kfs = savedB ? savedB.speed : speedKeyframesB;
             const lf = interpolateSpeed(kfs, Math.min(1, Math.max(0, t - 2)));
-            const result = processEvents(pvAnimB, eventsB, pvBCfg.type, lf);
+            const result = processEvents(pvAnimB, eventsB, pvBCfg.type, lf, previewPieceBFlip);
             if (result.changed) pvAnimB = { ...pvAnimB };
         }
     }
@@ -693,9 +718,9 @@ function handleCurvePointerMove(e: PointerEvent) {
         const dt = (timestamp - lastTimestamp) * playbackSpeed;
         lastTimestamp = timestamp;
 
-        const sA = findSavedPath(pvPathKeyA);
+        const sA = findSavedPath(pvPathKeyA, previewPieceAFlip);
         const sT = findSavedPath(pvPathKeyTrans);
-        const sB = findSavedPath(pvPathKeyB);
+        const sB = findSavedPath(pvPathKeyB, previewPieceBFlip);
         const durA = sA?.duration ?? durationA;
         const durT = sT?.duration ?? durationT;
         const durB = sB?.duration ?? durationB;

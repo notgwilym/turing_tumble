@@ -104,6 +104,7 @@ export function processEvents(
     events: PathEvent[],
     pieceType: string,
     lengthFraction: number,
+    flipped: boolean = false,
 ): { changed: boolean; animRotation: number; transition: string } {
     const defs = PIECE_EVENT_DEFS[pieceType] ?? {};
     let changed = false;
@@ -115,7 +116,7 @@ export function processEvents(
             runtime.firedEvents.add(i);
             const def = defs[events[i].event];
             if (def) {
-                animRotation = def.rotation;
+                animRotation = flipped ? -def.rotation : def.rotation;
                 transition = `transform ${def.durationMs}ms ${def.easing}`;
                 changed = true;
             }
