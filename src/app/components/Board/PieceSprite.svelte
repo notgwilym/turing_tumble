@@ -21,6 +21,7 @@
         onDragEnd,
         dragHoverCell,
         dragOriginCell,
+        animState,
     }: {
         piece: Piece;
         gridSize: number;
@@ -31,6 +32,8 @@
         onDragEnd?: () => void;
         dragHoverCell?: { x: number; y: number } | null;
         dragOriginCell?: { x: number; y: number } | null;
+        /** When set, overrides rotation and transition (from AnimationController) */
+        animState?: { rotation: number; transition: string } | null;
     } = $props();
 
     // ─── Piece type key ──────────────────────────────────────────────────────
@@ -89,10 +92,21 @@
         return 0;
     });
 
+    // When animState is provided, use its rotation instead of the engine-derived one
+    const effectiveRotationDeg = $derived(animState ? animState.rotation : stateRotationDeg);
+    const effectiveTransition = $derived.by(() => {
+        if (animState) return animState.transition;
+        // Default CSS transitions for editable pieces (toggling/flipping during board setup)
+        if (piece instanceof GearBit || piece instanceof NormalGear) return 'transform 400ms ease-out';
+        if (piece instanceof Bit) return 'transform 400ms ease-in';
+        if (piece instanceof Ramp) return 'transform 300ms ease-in-out';
+        return 'none';
+    });
+
     const transform = $derived.by(() => {
         const parts: string[] = [];
         if (facingScaleX === -1) parts.push('scaleX(-1)');
-        if (stateRotationDeg !== 0) parts.push(`rotate(${stateRotationDeg}deg)`);
+        if (effectiveRotationDeg !== 0) parts.push(`rotate(${effectiveRotationDeg}deg)`);
         return parts.length > 0 ? parts.join(' ') : 'none';
     });
 
@@ -181,6 +195,7 @@
         height: {dh}px;
         transform: {transform};
         transform-origin: {transformOrigin};
+        transition: {effectiveTransition};
         z-index: {pieceType === 'gear' ? 0 : 1};
     "
     draggable="true"

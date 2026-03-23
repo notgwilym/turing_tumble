@@ -6,6 +6,7 @@
     import BoardGrid from './BoardGrid.svelte';
     import PiecesLayer from './PiecesLayer.svelte';
     import BallsLayer from './BallsLayer.svelte';
+    import type { AnimBallState, AnimPieceState } from '../Animation/AnimationController';
 
     const {
         board,
@@ -16,6 +17,9 @@
         onPieceDrop,
         onPieceToggle,
         onPieceRemove,
+        animBall = null,
+        animPieceStates = null,
+        disableInteraction = false,
     } = $props<{
         board: CellType[][];
         pieces: (Piece | null)[][];
@@ -25,6 +29,12 @@
         onPieceDrop?: (x: number, y: number, payload: string) => void;
         onPieceToggle?: (x: number, y: number) => void;
         onPieceRemove?: (x: number, y: number) => void;
+        /** Animated ball state from AnimationController — hides engine balls when set */
+        animBall?: AnimBallState | null;
+        /** Animated piece states from AnimationController — keyed by "col,row" */
+        animPieceStates?: Map<string, AnimPieceState> | null;
+        /** Disable drag-and-drop and toggle interactions during animation */
+        disableInteraction?: boolean;
     }>();
 
     const boardWidth  = $derived(board[0]?.length * gridSize || 0);
@@ -152,19 +162,20 @@
     ondragover={handleBoardDragOver}
     ondrop={handleBoardDrop}
 >
-    <BoardGrid {board} {gridSize} {onPieceDrop} />
+    <BoardGrid {board} {gridSize} onPieceDrop={disableInteraction ? undefined : onPieceDrop} />
     <PiecesLayer
         {pieces}
         {gridSize}
         {globalScale}
-        onToggle={onPieceToggle}
-        onRemove={onPieceRemove}
-        onDragStart={handlePieceDragStart}
-        onDragEnd={handlePieceDragEnd}
+        onToggle={disableInteraction ? undefined : onPieceToggle}
+        onRemove={disableInteraction ? undefined : onPieceRemove}
+        onDragStart={disableInteraction ? undefined : handlePieceDragStart}
+        onDragEnd={disableInteraction ? undefined : handlePieceDragEnd}
         {dragHoverCell}
         {dragOriginCell}
+        {animPieceStates}
     />
-    <BallsLayer {activeBalls} {gridSize} />
+    <BallsLayer {activeBalls} {gridSize} {animBall} />
 
     {#if arrowPath}
         <svg class="arrow-overlay" viewBox="0 0 {boardWidth} {boardHeight}">

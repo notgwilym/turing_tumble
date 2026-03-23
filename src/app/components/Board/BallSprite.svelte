@@ -1,32 +1,37 @@
 <script lang="ts">
     import type { Ball } from '@engine/Ball';
-    
-    let { 
+
+    let {
         ball,
-        gridSize 
+        gridSize,
+        worldX,
+        worldY,
     }: {
         ball: Ball;
         gridSize: number;
+        /** If provided, overrides grid-based position with world-space pixels */
+        worldX?: number;
+        worldY?: number;
     } = $props();
-    
-    // Calculate visual position (centered in cell)
-    const position = $derived({ 
-        x: ball.x * gridSize + gridSize / 2, 
-        y: ball.y * gridSize + gridSize / 2
+
+    // Use world-space position if provided, otherwise derive from grid cell
+    const position = $derived({
+        x: worldX ?? (ball.x * gridSize + gridSize / 2),
+        y: worldY ?? (ball.y * gridSize + gridSize / 2),
     });
-    
+
     // Determine ball size and SVG
-    const ballSize = $derived(gridSize * 0.7);
-    const svgPath = $derived(ball.colour === 'red' 
-        ? '/src/assets/ball_red.svg' 
+    const ballSize = $derived(gridSize * 0.25);
+    const svgPath = $derived(ball.colour === 'red'
+        ? '/src/assets/ball_red.svg'
         : '/src/assets/ball_blue.svg'
     );
 </script>
 
-<div 
+<div
     class="ball {ball.colour}"
     style="
-        left: {position.x}px; 
+        left: {position.x}px;
         top: {position.y}px;
         width: {ballSize}px;
         height: {ballSize}px;
@@ -47,8 +52,7 @@
         justify-content: center;
         /* Center the ball on its position */
         transform: translate(-50%, -50%);
-        /* Smooth animation when position changes */
-        transition: left 0.3s ease-out, top 0.3s ease-out;
+        /* No CSS transition — AnimationController drives position directly */
         pointer-events: none;
     }
     

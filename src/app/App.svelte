@@ -18,10 +18,19 @@
 
     import AnimationTestPage from './components/Animation/AnimationTestPage.svelte';
     import { DEFAULT_GLOBAL_SCALE } from './components/Animation/PieceAnimConfig';
+    import { AnimationController, type AnimBallState, type AnimPieceState } from './components/Animation/AnimationController';
 
     let showTestPage = $state(false);
 
     let engine = new Engine();
+
+    // ─── Animation state ──────────────────────────────────────────────────────
+
+    let animController: AnimationController | null = null;
+    let animBall = $state<AnimBallState | null>(null);
+    let animPieceStates = $state<Map<string, AnimPieceState>>(new Map());
+    let isAnimating = $state(false);
+    let animIsPaused = $state(false);
 
     let gameState = $state({
         tick: 0,
@@ -65,6 +74,73 @@
     }
 
     function step() { engine.step(); }
+
+    // ─── Animation handlers ───────────────────────────────────────────────────
+
+    function handlePlay() {
+        if (isAnimating && animIsPaused) {
+            animController?.play();
+            animIsPaused = false;
+            return;
+        }
+
+        // Pre-compute the full simulation from current board state
+        let deltas;
+        try {
+            deltas = engine.runToCompletion();
+        } catch (err) {
+            showError(err instanceof Error ? err.message : String(err));
+            return;
+        }
+
+        if (deltas.length === 0) {
+            showError('No moves to animate (is the board empty?)');
+            return;
+        }
+
+        // Snapshot initial pieces for virtualRotation initialisation
+        const initialPieces = engine.getBoard().getPieceGrid().map(row => row.map(p => p ? p.clone() : null));
+
+        // Tear down any existing controller
+        animController?.dispose();
+
+        animController = new AnimationController(
+            deltas,
+            initialPieces,
+            GRID_SIZE,
+            GLOBAL_SCALE,
+            () => {
+                if (!animController) return;
+                animBall = animController.ballPos;
+                // Force Svelte reactivity by creating a new Map reference
+                animPieceStates = new Map(animController.pieceAnimStates);
+                isAnimating = !animController.isComplete;
+                if (animController.isComplete) {
+                    animIsPaused = false;
+                }
+            },
+        );
+
+        animController.prime();
+        isAnimating = true;
+        animIsPaused = false;
+        animController.play();
+    }
+
+    function handlePause() {
+        if (!isAnimating) return;
+        animController?.pause();
+        animIsPaused = true;
+    }
+
+    function handleStop() {
+        animController?.dispose();
+        animController = null;
+        animBall = null;
+        animPieceStates = new Map();
+        isAnimating = false;
+        animIsPaused = false;
+    }
 
     // ─── Drop: toolbar→board (copy) or board→board (move) ────────────────────
     //
@@ -184,33 +260,81 @@
 
     // ─── Initial board setup ──────────────────────────────────────────────────
 
-    function setupGearTest() {
-        engine.addPiece(new GearBit(3, 0, GearRotation.Counterclockwise));
-        engine.addPiece(new NormalGear(3, 1));
-        engine.addPiece(new GearBit(2, 1, GearRotation.Counterclockwise));
-        engine.addPiece(new Ramp(4, 1, Orientation.Left));
-        engine.addPiece(new Crossover(3, 2));
-        engine.addPiece(new Ramp(2, 3, Orientation.Left));
-        engine.addPiece(new Ramp(1, 4, Orientation.Right));
-        engine.addPiece(new Ramp(2, 5, Orientation.Left));
-        engine.addPiece(new Crossover(1, 6));
-        engine.addPiece(new Ramp(0, 7, Orientation.Right));
-        engine.addPiece(new Ramp(1, 8, Orientation.Right));
-        engine.addPiece(new Ramp(2, 9, Orientation.Left));
-        engine.addPiece(new Bit(4, 3, Orientation.Right));
-        engine.addPiece(new Ramp(5, 4, Orientation.Right));
-        engine.addPiece(new Ramp(6, 5, Orientation.Right));
-        engine.addPiece(new Ramp(7, 6, Orientation.Left));
-        engine.addPiece(new Ramp(6, 7, Orientation.Right));
-        engine.addPiece(new Ramp(7, 8, Orientation.Left));
-        engine.addPiece(new Ramp(6, 9, Orientation.Right));
-        engine.addPiece(new Ramp(3, 4, Orientation.Left));
-        engine.addPiece(new Ramp(7, 0, Orientation.Left));
-        engine.addPiece(new Ramp(6, 1, Orientation.Left));
-        engine.addPiece(new Ramp(5, 2, Orientation.Left));
-    }
+    // function setupGearTest() {
+    //     engine.addPiece(new GearBit(3, 0, GearRotation.Counterclockwise));
+    //     engine.addPiece(new NormalGear(3, 1));
+    //     engine.addPiece(new GearBit(2, 1, GearRotation.Counterclockwise));
+    //     engine.addPiece(new Ramp(4, 1, Orientation.Left));
+    //     engine.addPiece(new Crossover(3, 2));
+    //     engine.addPiece(new Ramp(2, 3, Orientation.Left));
+    //     engine.addPiece(new Ramp(1, 4, Orientation.Right));
+    //     engine.addPiece(new Ramp(2, 5, Orientation.Left));
+    //     engine.addPiece(new Crossover(1, 6));
+    //     engine.addPiece(new Ramp(0, 7, Orientation.Right));
+    //     engine.addPiece(new Ramp(1, 8, Orientation.Right));
+    //     engine.addPiece(new Ramp(2, 9, Orientation.Left));
+    //     engine.addPiece(new Bit(4, 3, Orientation.Right));
+    //     engine.addPiece(new Ramp(5, 4, Orientation.Right));
+    //     engine.addPiece(new Ramp(6, 5, Orientation.Right));
+    //     engine.addPiece(new Ramp(7, 6, Orientation.Left));
+    //     engine.addPiece(new Ramp(6, 7, Orientation.Right));
+    //     engine.addPiece(new Ramp(7, 8, Orientation.Left));
+    //     engine.addPiece(new Ramp(6, 9, Orientation.Right));
+    //     engine.addPiece(new Ramp(3, 4, Orientation.Left));
+    //     engine.addPiece(new Ramp(7, 0, Orientation.Left));
+    //     engine.addPiece(new Ramp(6, 1, Orientation.Left));
+    //     engine.addPiece(new Ramp(5, 2, Orientation.Left));
+    // }
+    function setupNewBoard() {
+    // Row 0
+    engine.addPiece(new Ramp(3, 0, Orientation.Right));
+    engine.addPiece(new Ramp(7, 0, Orientation.Left));
 
-    setupGearTest();
+    // Row 1
+    engine.addPiece(new Bit(4, 1, Orientation.Right));
+    engine.addPiece(new Bit(6, 1, Orientation.Right));
+
+    // Row 2
+    engine.addPiece(new Ramp(3, 2, Orientation.Left));
+    engine.addPiece(new Crossover(5, 2));
+    engine.addPiece(new Ramp(7, 2, Orientation.Right));
+
+    // Row 3
+    engine.addPiece(new Bit(6, 3, Orientation.Right));
+    engine.addPiece(new Ramp(8, 3, Orientation.Right));
+
+    // Row 4
+    engine.addPiece(new Ramp(1, 4, Orientation.Left));
+    engine.addPiece(new Ramp(7, 4, Orientation.Left));
+    engine.addPiece(new Interceptor(9, 4));
+
+    // Row 5
+    engine.addPiece(new Ramp(0, 5, Orientation.Right));
+    
+    engine.addPiece(new Ramp(6, 5, Orientation.Left));
+
+    // Row 6
+    engine.addPiece(new Ramp(1, 6, Orientation.Left));
+    
+    
+    engine.addPiece(new GearBit(5, 6, GearRotation.Counterclockwise));
+
+    // Row 7
+    engine.addPiece(new Ramp(0, 7, Orientation.Right));
+    engine.addPiece(new Crossover(6, 7));
+
+    // Row 8
+    engine.addPiece(new Ramp(1, 8, Orientation.Left));
+    engine.addPiece(new Ramp(7, 8, Orientation.Left));
+
+    // Row 9
+    engine.addPiece(new Ramp(0, 9, Orientation.Right));
+    engine.addPiece(new Crossover(6, 9));
+
+    // Row 10
+    engine.addPiece(new Ramp(5, 10, Orientation.Right));
+}
+    setupNewBoard();
 </script>
 
 {#if showTestPage}
@@ -223,7 +347,13 @@
 
             <div class="center-column">
                 <div class="controls-section">
-                    <GameControls onStep={step} engineState={gameState.engineState} />
+                    <GameControls
+                        onStep={step}
+                        onPlay={handlePlay}
+                        onPause={handlePause}
+                        onStop={handleStop}
+                        engineState={isAnimating ? (animIsPaused ? 'FROZEN' : 'RUNNING') : gameState.engineState}
+                    />
                     <StatusDisplay
                         tick={gameState.tick}
                         engineState={gameState.engineState}
@@ -242,6 +372,9 @@
                         onPieceDrop={handlePieceDrop}
                         onPieceToggle={handlePieceToggle}
                         onPieceRemove={handlePieceRemove}
+                        {animBall}
+                        {animPieceStates}
+                        disableInteraction={isAnimating}
                     />
                 </div>
 
