@@ -69,8 +69,8 @@ export class Engine {
 
   constructor(redBallsAmount: number = 20, blueBallsAmount: number = 20) {
     this.board = new Board();
-    this.leftStartQueue = this.populateStartQueue('red', redBallsAmount);
-    this.rightStartQueue = this.populateStartQueue('blue', blueBallsAmount);
+    this.leftStartQueue = this.populateStartQueue('blue', blueBallsAmount);
+    this.rightStartQueue = this.populateStartQueue('red', redBallsAmount);
     this.transition(StateTransition.INIT_DONE);
   }
 

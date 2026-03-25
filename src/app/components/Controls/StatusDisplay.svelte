@@ -42,11 +42,13 @@
     <div class="status-item queue">
         <span class="label">Queues:</span>
         <div class="queue-counts">
-            <span class="queue-count red" title="Red balls (left)">
-                🔴 {leftQueueCount}
-            </span>
             <span class="queue-count blue" title="Blue balls (right)">
-                🔵 {rightQueueCount}
+                <img src="/src/assets/ball_blue.svg" alt="blue ball" class="ball-icon" />
+                {rightQueueCount}
+            </span>
+            <span class="queue-count red" title="Red balls (left)">
+                <img src="/src/assets/ball_red.svg" alt="red ball" class="ball-icon" />
+                {leftQueueCount}
             </span>
         </div>
     </div>
@@ -99,6 +101,11 @@
         gap: 0.25rem;
         font-size: 1rem;
         font-weight: 700;
+    }
+
+    .ball-icon {
+        width: 1.2rem;
+        height: 1.2rem;
     }
     
     .queue-count.red {

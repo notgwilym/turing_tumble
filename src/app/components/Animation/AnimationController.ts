@@ -71,6 +71,8 @@ export class AnimationController {
         return idx >= 0 ? this.deltas[idx].tick : 0;
     }
 
+    get currentDeltaIndex(): number { return this.tickIdx; }
+
     // ── Internal playback state ───────────────────────────────────────────────
     private deltas: TickDelta[];
     private gridSize: number;

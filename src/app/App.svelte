@@ -32,6 +32,9 @@
     let isAnimating = $state(false);
     let animIsPaused = $state(false);
     let animTick = $state(0);
+    let animLeftQueueCount = $state(0);
+    let animRightQueueCount = $state(0);
+    let animQueueCountsAtDelta: { left: number; right: number }[] = [];
     let setupSnapshot: (Piece | null)[][] | null = null;
 
     let gameState = $state({
@@ -126,6 +129,23 @@
             return;
         }
 
+        // Pre-compute queue counts at each delta index
+        {
+            const counts = engine.getQueueCounts();
+            let left = counts.left;
+            let right = counts.right;
+            animQueueCountsAtDelta = [];
+            for (let i = 0; i < deltas.length; i++) {
+                // A new ball is consumed at the first delta and after any delta where
+                // the ball exited (nextPieceType === null means no next piece → exit cell next)
+                if (i === 0 || deltas[i - 1].nextPieceType === null) {
+                    if (deltas[i].ball.colour === 'red') left = Math.max(0, left - 1);
+                    else right = Math.max(0, right - 1);
+                }
+                animQueueCountsAtDelta.push({ left, right });
+            }
+        }
+
         // Snapshot initial pieces for virtualRotation initialisation
         const initialPieces = engine.getBoard().getPieceGrid().map(row => row.map(p => p ? p.clone() : null));
 
@@ -141,6 +161,8 @@
                 if (!animController) return;
                 animBall = animController.ballPos;
                 animTick = animController.currentTick;
+                const qc = animQueueCountsAtDelta[animController.currentDeltaIndex];
+                if (qc) { animLeftQueueCount = qc.left; animRightQueueCount = qc.right; }
                 if (animController.isComplete) {
                     // Revert pieces to engine state rather than leaving them at anim-end positions
                     animPieceStates = new Map();
@@ -395,8 +417,8 @@
                     <StatusDisplay
                         tick={isAnimating ? animTick : gameState.tick}
                         engineState={isAnimating ? (animIsPaused ? 'FROZEN' : 'RUNNING') : gameState.engineState}
-                        leftQueueCount={gameState.leftQueueCount}
-                        rightQueueCount={gameState.rightQueueCount}
+                        leftQueueCount={isAnimating ? animLeftQueueCount : gameState.leftQueueCount}
+                        rightQueueCount={isAnimating ? animRightQueueCount : gameState.rightQueueCount}
                     />
                 </div>
 
