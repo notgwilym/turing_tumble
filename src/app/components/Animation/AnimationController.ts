@@ -85,6 +85,11 @@ export class AnimationController {
     private animDuration = 1000;
     private transDuration = 100;
 
+    // Cached anim key for the current segment — resolved once at segment start so that
+    // mid-segment virtual-rotation changes (startFlip) don't switch the ball path.
+    private currentAnimKey = '';
+    private currentMirrorAnim = false;
+
     /** Absolute rotation (deg) for each piece keyed "col,row". Persists across ticks. */
     private virtualRotations: Map<string, number> = new Map();
 
@@ -246,6 +251,8 @@ export class AnimationController {
 
     private _loadSegmentDurations(delta: TickDelta) {
         const { animKey, mirrorAnim } = this._getAnimKey(delta);
+        this.currentAnimKey = animKey;
+        this.currentMirrorAnim = mirrorAnim;
         const animPath = this._findSavedPath(animKey, mirrorAnim);
         this.animDuration = animPath?.duration ?? 1000;
 
@@ -273,8 +280,7 @@ export class AnimationController {
         const cellCY = (delta.ball.from.row + 0.5) * this.gridSize;
 
         if (this.segment === 'anim') {
-            const { animKey, mirrorAnim } = this._getAnimKey(delta);
-            const saved = this._findSavedPath(animKey, mirrorAnim);
+            const saved = this._findSavedPath(this.currentAnimKey, this.currentMirrorAnim);
             const kfs = saved?.speed ?? [{ t: 0, l: 0 }, { t: 1, l: 1 }];
             const lf = this._interpolateSpeed(kfs, Math.min(1, this.segmentProgress));
 
@@ -349,8 +355,7 @@ export class AnimationController {
         if (this.segment !== 'anim' || this.tickIdx >= this.deltas.length) return;
         const delta = this.deltas[this.tickIdx];
 
-        const { animKey, mirrorAnim } = this._getAnimKey(delta);
-        const saved = this._findSavedPath(animKey, mirrorAnim);
+        const saved = this._findSavedPath(this.currentAnimKey, this.currentMirrorAnim);
         if (!saved) return;
 
         const kfs = saved.speed;
@@ -457,7 +462,14 @@ export class AnimationController {
         // Crossover/Interceptor: right auto-mirrors from left inside _findSavedPath
 
         if (pieceType === 'bit' || pieceType === 'gearbit') {
-            
+            // When facing left (virtualRot=90°), authored paths are for the right-facing state.
+            // Mirror the opposite-entry path, same as flipped ramps.
+            const pieceKey = `${delta.ball.from.col},${delta.ball.from.row}`;
+            const virtualRot = this.virtualRotations.get(pieceKey) ?? 0;
+            if (virtualRot === 90) {
+                entryDir = entryDir === 'left' ? 'right' : 'left';
+                mirror = true;
+            }
         }
 
         return { animKey: `ANIM_${pieceType}_${entryDir}`, mirrorAnim: mirror };
