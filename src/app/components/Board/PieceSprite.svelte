@@ -142,6 +142,10 @@
     }
 
    function handleDragStart(e: DragEvent) {
+        if (!onDragStart) {
+            e.preventDefault();
+            return;
+        }
         const payload = JSON.stringify({
             pieceType,
             orientation:  piece instanceof FlippablePiece ? piece.orientation  : undefined,

@@ -45,6 +45,7 @@ const STATE_TRANSITIONS: TransitionMap = {
   },
   [EngineState.FROZEN]: {
     [StateTransition.PLAY]: EngineState.RUNNING,
+    [StateTransition.STEP]: EngineState.FROZEN,
     [StateTransition.STOP]: EngineState.SETUP,
     [StateTransition.TERMINAL_STATE]: EngineState.FINISHED,
   },
@@ -308,6 +309,26 @@ export class Engine {
   // Clones the current board configuration into a temporary Engine, runs it
   // to completion, and returns a TickDelta for every ball-visits-piece step.
   // The real engine state is never mutated.
+
+  public reset(pieces?: (Piece | null)[][]): void {
+    this.state = EngineState.SETUP;
+    this.currentTick = 0;
+    this.leftStartQueue = this.populateStartQueue('red', 20);
+    this.rightStartQueue = this.populateStartQueue('blue', 20);
+    this.activeBalls = [];
+    this.finishedBalls = [];
+    if (pieces) {
+      this.board = new Board();
+      for (const row of pieces) {
+        for (const piece of row) {
+          if (piece) {
+            try { this.board.placePiece(piece.clone()); } catch { /* ignore */ }
+          }
+        }
+      }
+    }
+    this.notify();
+  }
 
   public runToCompletion(): TickDelta[] {
     if (this.state !== EngineState.SETUP) {

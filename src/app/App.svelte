@@ -31,6 +31,8 @@
     let animPieceStates = $state<Map<string, AnimPieceState>>(new Map());
     let isAnimating = $state(false);
     let animIsPaused = $state(false);
+    let animTick = $state(0);
+    let setupSnapshot: (Piece | null)[][] | null = null;
 
     let gameState = $state({
         tick: 0,
@@ -73,7 +75,27 @@
         };
     }
 
-    function step() { engine.step(); }
+    function step() {
+        if (isAnimating) {
+            const targetTick = animController!.currentTick;
+            handleStop(); // kills animation, engine returns to SETUP
+            // Snapshot the clean board before any stepping
+            setupSnapshot = engine.getBoard().getPieceGrid()
+                .map(row => row.map(p => p ? p.clone() : null));
+            // Fast-forward engine to match where the animation was paused
+            while (engine.getCurrentTick() < targetTick) {
+                engine.step();
+            }
+            // Now do the user's actual step from that position
+            engine.step();
+            return;
+        }
+        if (setupSnapshot === null) {
+            setupSnapshot = engine.getBoard().getPieceGrid()
+                .map(row => row.map(p => p ? p.clone() : null));
+        }
+        engine.step();
+    }
 
     // ─── Animation handlers ───────────────────────────────────────────────────
 
@@ -82,6 +104,12 @@
             animController?.play();
             animIsPaused = false;
             return;
+        }
+
+        // If the engine was advanced by stepping, restore it before animating
+        if (engine.getState() !== 'SETUP') {
+            engine.reset(setupSnapshot ?? undefined);
+            setupSnapshot = null;
         }
 
         // Pre-compute the full simulation from current board state
@@ -114,6 +142,7 @@
                 animBall = animController.ballPos;
                 // Force Svelte reactivity by creating a new Map reference
                 animPieceStates = new Map(animController.pieceAnimStates);
+                animTick = animController.currentTick;
                 isAnimating = !animController.isComplete;
                 if (animController.isComplete) {
                     animIsPaused = false;
@@ -137,9 +166,14 @@
         animController?.dispose();
         animController = null;
         animBall = null;
+        animTick = 0;
         animPieceStates = new Map();
         isAnimating = false;
         animIsPaused = false;
+        if (setupSnapshot !== null) {
+            engine.reset(setupSnapshot);
+            setupSnapshot = null;
+        }
     }
 
     // ─── Drop: toolbar→board (copy) or board→board (move) ────────────────────
@@ -355,8 +389,8 @@
                         engineState={isAnimating ? (animIsPaused ? 'FROZEN' : 'RUNNING') : gameState.engineState}
                     />
                     <StatusDisplay
-                        tick={gameState.tick}
-                        engineState={gameState.engineState}
+                        tick={isAnimating ? animTick : gameState.tick}
+                        engineState={isAnimating ? (animIsPaused ? 'FROZEN' : 'RUNNING') : gameState.engineState}
                         leftQueueCount={gameState.leftQueueCount}
                         rightQueueCount={gameState.rightQueueCount}
                     />
@@ -374,7 +408,7 @@
                         onPieceRemove={handlePieceRemove}
                         {animBall}
                         {animPieceStates}
-                        disableInteraction={isAnimating}
+                        disableInteraction={isAnimating || gameState.engineState !== 'SETUP'}
                     />
                 </div>
 

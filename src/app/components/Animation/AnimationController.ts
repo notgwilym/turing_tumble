@@ -66,6 +66,11 @@ export class AnimationController {
     isPlaying = false;
     isComplete = false;
 
+    get currentTick(): number {
+        const idx = Math.min(this.tickIdx, this.deltas.length - 1);
+        return idx >= 0 ? this.deltas[idx].tick : 0;
+    }
+
     // ── Internal playback state ───────────────────────────────────────────────
     private deltas: TickDelta[];
     private gridSize: number;
