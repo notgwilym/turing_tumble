@@ -140,12 +140,16 @@
             () => {
                 if (!animController) return;
                 animBall = animController.ballPos;
-                // Force Svelte reactivity by creating a new Map reference
-                animPieceStates = new Map(animController.pieceAnimStates);
                 animTick = animController.currentTick;
-                isAnimating = !animController.isComplete;
                 if (animController.isComplete) {
+                    // Revert pieces to engine state rather than leaving them at anim-end positions
+                    animPieceStates = new Map();
+                    isAnimating = false;
                     animIsPaused = false;
+                } else {
+                    // Force Svelte reactivity by creating a new Map reference
+                    animPieceStates = new Map(animController.pieceAnimStates);
+                    isAnimating = true;
                 }
             },
         );
