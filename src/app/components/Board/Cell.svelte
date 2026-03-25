@@ -165,8 +165,12 @@
 
     /* Blanks and exits: no indicator at all when hovered during drag */
 
-    .left-exit, .right-exit {
-        background: rgba(200, 100, 50, 0.2);
+    .left-exit {
+        background: rgba(103, 100, 255, 0.2);
+    }
+
+    .right-exit {
+        background: rgba(255, 100, 100, 0.2);
     }
 
     .peg-dot {
@@ -186,7 +190,8 @@
 
     .exit-arrow {
         font-size: 1.5rem;
-        color: #ff6b35;
+        color: #e7e7e7;
         opacity: 0.6;
     }
+
 </style>
