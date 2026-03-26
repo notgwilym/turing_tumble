@@ -8,13 +8,14 @@
     import { Interceptor } from '../engine/pieces/Interceptor';
     import { GearBit, NormalGear, GearRotation } from '../engine/pieces/Gear';
 
-    import type { Ball } from '../engine/Ball';
+    import { Ball } from '../engine/Ball';
     import type { Piece } from '../engine/pieces/Piece';
 
     import Board from './components/Board/Board.svelte';
     import GameControls from './components/Controls/GameControls.svelte';
     import StatusDisplay from './components/Controls/StatusDisplay.svelte';
     import PieceToolbar from './components/Toolbar/PieceToolbar.svelte';
+    import OutputDisplay from './components/Controls/OutputDisplay.svelte';
 
     import AnimationTestPage from './components/Animation/AnimationTestPage.svelte';
     import { DEFAULT_GLOBAL_SCALE } from './components/Animation/PieceAnimConfig';
@@ -35,6 +36,9 @@
     let animLeftQueueCount = $state(0);
     let animRightQueueCount = $state(0);
     let animQueueCountsAtDelta: { left: number; right: number }[] = [];
+    let animFinishedBalls = $state<Ball[]>([]);
+    let animFinishedBallsAtDelta: Ball[][] = [];
+    let animHasResult = $state(false);
     let setupSnapshot: (Piece | null)[][] | null = null;
 
     let gameState = $state({
@@ -146,6 +150,21 @@
             }
         }
 
+        // Pre-compute finished balls at each delta index
+        {
+            animFinishedBallsAtDelta = [];
+            const accumulated: Ball[] = [];
+            for (let i = 0; i < deltas.length; i++) {
+                if (deltas[i].nextPieceType === null && deltas[i].terminalReason !== 'interceptor') {
+                    accumulated.push(new Ball(deltas[i].ball.colour));
+                }
+                animFinishedBallsAtDelta.push([...accumulated]);
+            }
+        }
+
+        animFinishedBalls = [];
+        animHasResult = false;
+
         // Snapshot initial pieces for virtualRotation initialisation
         const initialPieces = engine.getBoard().getPieceGrid().map(row => row.map(p => p ? p.clone() : null));
 
@@ -163,6 +182,8 @@
                 animTick = animController.currentTick;
                 const qc = animQueueCountsAtDelta[animController.currentDeltaIndex];
                 if (qc) { animLeftQueueCount = qc.left; animRightQueueCount = qc.right; }
+                animFinishedBalls = animFinishedBallsAtDelta[animController.currentDeltaIndex] ?? [];
+                animHasResult = true;
                 if (animController.isComplete) {
                     // Revert pieces to engine state rather than leaving them at anim-end positions
                     animPieceStates = new Map();
@@ -194,6 +215,8 @@
         animBall = null;
         animTick = 0;
         animPieceStates = new Map();
+        animFinishedBalls = [];
+        animHasResult = false;
         isAnimating = false;
         animIsPaused = false;
         if (setupSnapshot !== null) {
@@ -438,14 +461,7 @@
                     />
                 </div>
 
-                <div class="debug-section">
-                    <button onclick={() => showDebug = !showDebug} class="debug-toggle">
-                        {showDebug ? 'Hide' : 'Show'} Debug Info
-                    </button>
-                    {#if showDebug}
-                        <div class="state-display"><pre>{gameState.stateString}</pre></div>
-                    {/if}
-                </div>
+                <OutputDisplay finishedBalls={animHasResult ? animFinishedBalls : gameState.finishedBalls} />
             </div>
         </div>
     </main>
