@@ -480,11 +480,11 @@
 </button>
 
 <style>
-    main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+    main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
 
     .app-layout {
         display: flex;
-        gap: 2rem;
+        gap: 1.5rem;
         align-items: flex-start;
         justify-content: center;
     }
@@ -498,7 +498,7 @@
 
     .controls-section {
         display: flex;
-        gap: 2rem;
+        gap: 1rem;
         justify-content: center;
         align-items: center;
         margin-bottom: 1rem;
@@ -513,22 +513,23 @@
         left: 50%;
         transform: translateX(-50%);
         z-index: 9999;
-        background: rgba(220, 60, 60, 0.92);
-        color: #fff;
+        background: hsl(10, 70%, 50%);
+        color: hsl(44, 100%, 96%);
         padding: 0.6rem 1.4rem;
-        border-radius: 8px;
+        border-radius: 5px 8px 6px 7px / 7px 5px 8px 6px;
+        border: 2px solid hsl(10, 60%, 38%);
         font-size: 0.875rem;
-        font-weight: 500;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        font-family: 'Oliver', 'Architects Daughter', cursive;
+        box-shadow: 3px 3px 0 hsl(10, 50%, 40%);
         animation: toastIn 0.25s ease, toastOut 0.4s ease 1.6s forwards;
         pointer-events: none;
     }
- 
+
     @keyframes toastIn {
         from { opacity: 0; transform: translateX(-50%) translateY(12px); }
         to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
- 
+
     @keyframes toastOut {
         from { opacity: 1; }
         to   { opacity: 0; transform: translateX(-50%) translateY(8px); }
@@ -538,23 +539,25 @@
 
     .debug-toggle {
         padding: 0.5rem 1rem;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-        color: #fff;
+        background: var(--panel-bg);
+        border: 2px solid var(--panel-border);
+        border-radius: 4px 7px 5px 6px / 6px 4px 7px 5px;
+        color: var(--ink-mid);
         cursor: pointer;
+        font-family: 'Oliver', 'Architects Daughter', cursive;
     }
 
-    .debug-toggle:hover { background: rgba(255, 255, 255, 0.2); }
+    .debug-toggle:hover { background: var(--panel-shadow); }
 
     .state-display {
         margin-top: 1rem;
         padding: 1rem;
-        background-color: #1a1a1a;
-        border: 1px solid #333;
-        border-radius: 4px;
+        background-color: var(--panel-bg);
+        border: 2px solid var(--panel-border);
+        border-radius: 4px 7px 5px 6px / 6px 4px 7px 5px;
         overflow-x: auto;
         text-align: left;
+        box-shadow: 3px 3px 0 var(--panel-shadow);
     }
 
     pre {
@@ -562,22 +565,23 @@
         font-family: 'Courier New', monospace;
         font-size: 0.8rem;
         line-height: 1.4;
-        color: #e0e0e0;
+        color: var(--ink);
     }
 
     .page-toggle {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 9999;
-    padding: 6px 14px;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 4px;
-    background: rgba(30,30,30,0.9);
-    color: #fff;
-    font-size: 0.8rem;
-    cursor: pointer;
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 9999;
+        padding: 6px 14px;
+        border: 2px solid var(--panel-border);
+        border-radius: 4px 7px 5px 6px / 6px 4px 7px 5px;
+        background: var(--panel-bg);
+        color: var(--ink);
+        font-size: 0.85rem;
+        font-family: 'Oliver', 'Architects Daughter', cursive;
+        cursor: pointer;
+        box-shadow: 2px 2px 0 var(--panel-shadow);
     }
-    .page-toggle:hover { background: rgba(60,60,60,0.9); }
-    
+    .page-toggle:hover { background: var(--panel-shadow); }
 </style>

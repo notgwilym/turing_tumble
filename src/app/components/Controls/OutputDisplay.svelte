@@ -11,13 +11,13 @@
 <div class="output-display">
     <span class="label">Output</span>
     <div class="balls-row">
-        {#each [...finishedBalls].reverse() as ball, i (i)}
-            <div
-                class="ball-dot"
-                class:red={ball.colour === 'red'}
-                class:blue={ball.colour === 'blue'}
+        {#each finishedBalls as ball, i (i)}
+            <img
+                src="/src/assets/ball_{ball.colour}.svg"
+                alt={ball.colour}
+                class="ball-icon"
                 title="Ball {i + 1}: {ball.colour}"
-            ></div>
+            />
         {/each}
         {#if finishedBalls.length === 0}
             <span class="empty">—</span>
@@ -30,17 +30,19 @@
         display: flex;
         gap: 0.75rem;
         align-items: center;
-        padding: 0.75rem 1rem;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 8px;
-        font-family: 'Courier New', monospace;
+        padding: 0.55rem 0.9rem;
+        background: var(--panel-bg);
+        border: 2px solid var(--panel-border);
+        border-radius: 5px 9px 6px 8px / 8px 5px 9px 6px;
+        box-shadow: 3px 3px 0 var(--panel-shadow);
+        font-family: 'Oliver', 'Architects Daughter', cursive;
     }
 
     .label {
-        color: #888;
-        font-size: 0.9rem;
-        font-weight: 600;
+        color: var(--ink-mid);
+        font-size: 0.85rem;
         text-transform: uppercase;
+        letter-spacing: 0.04em;
         flex-shrink: 0;
     }
 
@@ -51,31 +53,18 @@
         flex-wrap: wrap;
     }
 
-    .ball-dot {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
+    .ball-icon {
+        width: 22px;
+        height: 22px;
         flex-shrink: 0;
-        transition: transform 0.2s ease;
     }
 
-    /* newest ball gets a brief pop-in */
-    .ball-dot:first-child {
+    .ball-icon:last-child {
         animation: pop-in 0.25s ease-out;
     }
 
-    .ball-dot.red {
-        background: radial-gradient(circle at 35% 35%, #ff8888, #cc2222);
-        box-shadow: 0 0 4px rgba(204, 34, 34, 0.5);
-    }
-
-    .ball-dot.blue {
-        background: radial-gradient(circle at 35% 35%, #88aaff, #2255cc);
-        box-shadow: 0 0 4px rgba(34, 85, 204, 0.5);
-    }
-
     .empty {
-        color: #555;
+        color: var(--ink-faint);
         font-size: 0.9rem;
     }
 

@@ -118,80 +118,53 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background-color 0.15s;
+        background: transparent;
     }
 
-    .blank    { background: transparent; }
-    .peg      { background: rgba(100, 100, 100, 0.2); }
+    /* ── Hover states ── */
+    .slot-peg.hovering-valid  { background: hsla(130, 55%, 50%, 0.18); }
+    .peg.hovering-valid       { background: hsla(130, 55%, 50%, 0.18); }
+    .hovering-invalid         { background: hsla(8, 70%, 55%, 0.12); }
 
-    .slot-peg {
-        background: rgba(80, 120, 180, 0.15);
-        border: 1px dashed rgba(100, 150, 200, 0.3);
-    }
-
-    /* ── Valid hover: green highlight across entire cell ── */
-    .slot-peg.hovering-valid {
-        background: rgba(100, 220, 100, 0.25);
-        border-color: rgba(100, 220, 100, 0.7);
-        border-style: solid;
-    }
-
-    .peg.hovering-valid {
-        background: rgba(100, 220, 100, 0.25);
-        outline: 2px solid rgba(100, 220, 100, 0.5);
-    }
-
-    /* ── Invalid hover on a Peg/SlotPeg: prohibited indicator ── */
-    .hovering-invalid {
-        background: rgba(220, 60, 60, 0.1);
-    }
     .hovering-invalid::after {
         content: '';
         position: absolute;
         width: 18px;
         height: 18px;
         border-radius: 50%;
-        border: 2px solid rgba(220, 60, 60, 0.6);
-        /* Diagonal line through circle */
-        background:
-            linear-gradient(
-                to top right,
-                transparent calc(50% - 1px),
-                rgba(220, 60, 60, 0.6) calc(50% - 1px),
-                rgba(220, 60, 60, 0.6) calc(50% + 1px),
-                transparent calc(50% + 1px)
-            );
+        border: 2px solid hsla(8, 65%, 50%, 0.55);
+        background: linear-gradient(
+            to top right,
+            transparent calc(50% - 1px),
+            hsla(8, 65%, 50%, 0.55) calc(50% - 1px),
+            hsla(8, 65%, 50%, 0.55) calc(50% + 1px),
+            transparent calc(50% + 1px)
+        );
     }
 
-    /* Blanks and exits: no indicator at all when hovered during drag */
-
-    .left-exit {
-        background: rgba(103, 100, 255, 0.2);
-    }
-
-    .right-exit {
-        background: rgba(255, 100, 100, 0.2);
-    }
-
+    /* ── Peg markers ── */
     .peg-dot {
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
-        background: #666;
+        background: var(--ink-mid);
+        opacity: 0.7;
     }
 
     .slot-peg-marker {
-        width: 12px;
-        height: 12px;
-        border: 2px solid #4a90e2;
+        width: 18px;
+        height: 18px;
+        border: 2px dashed var(--panel-border);
         border-radius: 50%;
-        opacity: 0.5;
     }
+
+    .left-exit  { background: hsl(229, 44%, 49%); }
+    .right-exit { background: hsl(0, 100%, 71%); }
 
     .exit-arrow {
-        font-size: 1.5rem;
-        color: #e7e7e7;
-        opacity: 0.6;
+        font-size: 1.3rem;
+        color: hsl(44, 100%, 96%);
+        opacity: 0.9;
+        user-select: none;
     }
-
 </style>

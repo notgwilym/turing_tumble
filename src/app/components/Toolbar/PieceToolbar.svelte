@@ -119,9 +119,10 @@
         flex-direction: column;
         gap: 0.5rem;
         padding: 1rem 0.75rem;
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
+        background: var(--panel-bg);
+        border: 2px solid var(--panel-border);
+        border-radius: 6px 12px 8px 10px / 10px 6px 12px 8px;
+        box-shadow: 4px 4px 0 var(--panel-shadow);
         min-width: 150px;
         max-width: 170px;
         align-self: flex-start;
@@ -129,20 +130,22 @@
 
     .toolbar-title {
         margin: 0 0 0.1rem;
-        font-size: 0.95rem;
+        font-size: 1rem;
         font-weight: 700;
-        color: #fff;
-        letter-spacing: 0.05em;
+        color: var(--ink);
+        letter-spacing: 0.06em;
         text-transform: uppercase;
         text-align: center;
+        font-family: 'Oliver', 'Architects Daughter', cursive;
     }
 
     .toolbar-hint {
         margin: 0 0 0.5rem;
-        font-size: 0.68rem;
-        color: #666;
+        font-size: 0.7rem;
+        color: var(--ink-faint);
         text-align: center;
         line-height: 1.5;
+        font-family: 'Oliver', 'Architects Daughter', cursive;
     }
 
     .piece-list {
@@ -153,13 +156,13 @@
 
     .divider {
         border: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        border-top: 1px solid var(--grid-line);
         margin: 0.1rem 0;
     }
 
     .section-divider {
         border: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-top: 2px solid var(--panel-border);
         margin: 0.4rem 0 0.2rem;
     }
 
@@ -167,29 +170,33 @@
         width: 100%;
         padding: 0.4rem 0.5rem;
         font-size: 0.8rem;
-        border-radius: 6px;
-        border: 1px solid rgba(255, 80, 80, 0.3);
-        background: rgba(255, 80, 80, 0.1);
-        color: #ff8888;
+        font-family: 'Oliver', 'Architects Daughter', cursive;
+        border-radius: 4px 7px 5px 6px / 6px 4px 7px 5px;
+        border: 2px solid hsl(8, 55%, 60%);
+        background: hsl(8, 70%, 90%);
+        color: hsl(8, 55%, 35%);
         cursor: pointer;
-        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        transition: background 0.15s, box-shadow 0.12s, transform 0.12s;
         text-align: center;
+        box-shadow: 2px 2px 0 hsl(8, 40%, 70%);
     }
 
     .clear-btn:hover {
-        background: rgba(255, 80, 80, 0.2);
-        border-color: rgba(255, 80, 80, 0.5);
+        background: hsl(8, 70%, 85%);
+        box-shadow: 3px 3px 0 hsl(8, 40%, 70%);
+        transform: translateY(-1px);
     }
 
     .clear-btn.armed {
-        background: rgba(255, 160, 0, 0.25);
-        border-color: rgba(255, 160, 0, 0.7);
-        color: #ffcc44;
+        border-color: hsl(38, 75%, 45%);
+        background: hsl(38, 85%, 87%);
+        color: hsl(38, 65%, 28%);
+        box-shadow: 2px 2px 0 hsl(38, 50%, 65%);
         animation: pulse 0.6s ease infinite alternate;
     }
 
     @keyframes pulse {
-        from { opacity: 0.8; }
+        from { opacity: 0.85; }
         to   { opacity: 1; }
     }
 </style>

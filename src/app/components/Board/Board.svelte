@@ -40,6 +40,53 @@
     const boardWidth  = $derived(board[0]?.length * gridSize || 0);
     const boardHeight = $derived(board.length * gridSize || 0);
 
+    type Seg = { x1: number; y1: number; x2: number; y2: number };
+
+    function computeGroupEdges(board: CellType[][], gridSize: number, matchType: CellType): Seg[] {
+        const segs: Seg[] = [];
+        for (let r = 0; r < board.length; r++) {
+            for (let c = 0; c < board[r].length; c++) {
+                if (board[r][c] !== matchType) continue;
+                const x = c * gridSize, y = r * gridSize;
+                const diff = (dr: number, dc: number) => {
+                    const nr = r + dr, nc = c + dc;
+                    return nr < 0 || nr >= board.length || nc < 0 || nc >= board[r].length
+                        || board[nr][nc] !== matchType;
+                };
+                if (diff(-1,  0)) segs.push({ x1: x,           y1: y,            x2: x + gridSize, y2: y            });
+                if (diff( 1,  0)) segs.push({ x1: x,           y1: y + gridSize, x2: x + gridSize, y2: y + gridSize });
+                if (diff( 0, -1)) segs.push({ x1: x,           y1: y,            x2: x,            y2: y + gridSize });
+                if (diff( 0,  1)) segs.push({ x1: x + gridSize, y1: y,           x2: x + gridSize, y2: y + gridSize });
+            }
+        }
+        return segs;
+    }
+
+    // Compute the outline edge segments that border active (non-blank) cells only
+    const outlineEdges = $derived.by(() => {
+        const segs: { x1: number; y1: number; x2: number; y2: number }[] = [];
+        for (let r = 0; r < board.length; r++) {
+            for (let c = 0; c < board[r].length; c++) {
+                if (board[r][c] === CellType.Blank) continue;
+                const x = c * gridSize;
+                const y = r * gridSize;
+                const neighbourBlank = (dr: number, dc: number) => {
+                    const nr = r + dr, nc = c + dc;
+                    return nr < 0 || nr >= board.length || nc < 0 || nc >= board[r].length
+                        || board[nr][nc] === CellType.Blank;
+                };
+                if (neighbourBlank(-1, 0)) segs.push({ x1: x,            y1: y,            x2: x + gridSize, y2: y            });
+                if (neighbourBlank( 1, 0)) segs.push({ x1: x,            y1: y + gridSize, x2: x + gridSize, y2: y + gridSize });
+                if (neighbourBlank( 0,-1)) segs.push({ x1: x,            y1: y,            x2: x,            y2: y + gridSize });
+                if (neighbourBlank( 0, 1)) segs.push({ x1: x + gridSize, y1: y,            x2: x + gridSize, y2: y + gridSize });
+            }
+        }
+        return segs;
+    });
+
+    const leftExitEdges  = $derived(computeGroupEdges(board, gridSize, CellType.LeftExit));
+    const rightExitEdges = $derived(computeGroupEdges(board, gridSize, CellType.RightExit));
+
     // ─── Drag arrow state ────────────────────────────────────────────────────
 
     let dragOrigin = $state<{ x: number; y: number } | null>(null);
@@ -177,36 +224,52 @@
     />
     <BallsLayer {activeBalls} {gridSize} {animBall} />
 
-    {#if arrowPath}
-        <svg class="arrow-overlay" viewBox="0 0 {boardWidth} {boardHeight}">
+    <svg class="board-overlay" viewBox="0 0 {boardWidth} {boardHeight}">
+        <!-- Active-area outline -->
+        {#each outlineEdges as seg}
+            <line x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+                stroke="var(--panel-border)" stroke-width="2" stroke-linecap="square" />
+        {/each}
+
+        <!-- Left-exit group border -->
+        {#each leftExitEdges as seg}
+            <line x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+                stroke="hsl(229, 55%, 35%)" stroke-width="2.5" stroke-linecap="square" />
+        {/each}
+
+        <!-- Right-exit group border -->
+        {#each rightExitEdges as seg}
+            <line x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+                stroke="hsl(0, 75%, 50%)" stroke-width="2.5" stroke-linecap="square" />
+        {/each}
+
+        <!-- Drag arrow -->
+        {#if arrowPath}
             <line
                 x1={arrowPath.lineX1}
                 y1={arrowPath.lineY1}
                 x2={arrowPath.lineX2}
                 y2={arrowPath.lineY2}
-                stroke="rgba(255, 255, 255, 0.5)"
+                stroke="hsla(25, 45%, 22%, 0.5)"
                 stroke-width={ARROW_STROKE}
                 stroke-linecap="round"
             />
             <polygon
                 points={arrowPath.headPoints}
-                fill="rgba(255, 255, 255, 0.5)"
+                fill="hsla(25, 45%, 22%, 0.5)"
             />
-        </svg>
-    {/if}
+        {/if}
+    </svg>
 </div>
 
 <style>
     .board-container {
         position: relative;
-        margin: 2rem auto;
-        border: 3px solid #333;
-        border-radius: 8px;
-        background: #1a1a1a;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        margin: 1rem auto;
+        background: transparent;
     }
 
-    .arrow-overlay {
+    .board-overlay {
         position: absolute;
         inset: 0;
         z-index: 10;

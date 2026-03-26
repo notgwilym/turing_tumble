@@ -1,11 +1,26 @@
+@font-face {
+  font-family: 'Oliver';
+  src: url('/fonts/Oliver.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --cream:        hsl(44, 100%, 96%);
+  --grid-line:    hsl(44, 35%, 78%);
+  --ink:          hsl(25, 45%, 22%);
+  --ink-mid:      hsl(25, 30%, 45%);
+  --ink-faint:    hsl(25, 20%, 65%);
+  --panel-bg:     hsl(44, 60%, 91%);
+  --panel-border: hsl(44, 38%, 60%);
+  --panel-shadow: hsl(44, 28%, 72%);
+
+  font-family: 'Oliver', 'Architects Daughter', cursive;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--ink);
+  background-color: var(--cream);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,67 +28,59 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--cream);
+  position: relative;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Panning grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -88px;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  animation: pan-grid 10s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
 }
 
-.card {
-  padding: 2em;
+@keyframes pan-grid {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-44px, -44px); }
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Oliver', 'Architects Daughter', cursive;
+  color: var(--ink);
+  margin: 0;
+}
+
+a {
+  color: var(--ink);
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  font-family: 'Oliver', 'Architects Daughter', cursive;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:focus-visible {
+  outline: 3px solid var(--panel-border);
+  outline-offset: 2px;
 }

@@ -102,38 +102,40 @@
     .piece-icon-row {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
+        gap: 0.6rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 4px 7px 5px 6px / 6px 4px 7px 5px;
         transition: background 0.15s;
     }
 
     .piece-icon-row:hover {
-        background: rgba(255, 255, 255, 0.07);
+        background: var(--grid-line);
     }
 
     .piece-icon {
-        width: 52px;
-        height: 52px;
+        width: 50px;
+        height: 50px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.05);
-        border: 2px solid rgba(255, 255, 255, 0.15);
-        border-radius: 8px;
+        background: var(--cream);
+        border: 2px solid var(--panel-border);
+        border-radius: 4px 7px 5px 6px / 6px 4px 7px 5px;
         cursor: grab;
-        transition: border-color 0.15s, background 0.15s, transform 0.1s;
+        transition: border-color 0.15s, box-shadow 0.12s, transform 0.1s;
         flex-shrink: 0;
+        box-shadow: 2px 2px 0 var(--panel-shadow);
     }
 
     .piece-icon:hover {
-        border-color: rgba(100, 150, 255, 0.6);
-        background: rgba(100, 150, 255, 0.1);
+        border-color: hsl(210, 55%, 50%);
+        box-shadow: 3px 3px 0 hsl(210, 35%, 70%);
     }
 
     .piece-icon:active {
         cursor: grabbing;
         transform: scale(0.95);
+        box-shadow: 1px 1px 0 var(--panel-shadow);
     }
 
     .piece-info {
@@ -145,24 +147,27 @@
 
     .piece-label {
         font-size: 0.8rem;
-        color: #ccc;
-        font-weight: 500;
+        color: var(--ink);
+        font-family: 'Oliver', 'Architects Daughter', cursive;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
         white-space: nowrap;
     }
 
     .orientation-toggle {
-        font-size: 1rem;
-        padding: 0.15rem 0.4rem;
-        background: rgba(100, 150, 255, 0.15);
-        border: 1px solid rgba(100, 150, 255, 0.3);
-        border-radius: 4px;
-        color: #aac4ff;
+        font-size: 0.9rem;
+        padding: 0.1rem 0.35rem;
+        background: var(--cream);
+        border: 2px solid var(--panel-border);
+        border-radius: 3px 5px 4px 5px / 5px 3px 5px 4px;
+        color: var(--ink);
         cursor: pointer;
         line-height: 1;
-        transition: background 0.15s;
+        transition: background 0.15s, box-shadow 0.12s;
+        box-shadow: 1px 1px 0 var(--panel-shadow);
     }
 
     .orientation-toggle:hover {
-        background: rgba(100, 150, 255, 0.3);
+        background: var(--panel-shadow);
     }
 </style>
