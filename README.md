@@ -6,7 +6,6 @@ Built with TypeScript, Svelte 5, and SVG rendering.
 
 **[Video Demo]([https://youtu.be/C9eKqGsn-y8])**
 
-
 ## Features
 
 - **All six piece types**: Bit, Ramp, Crossover, Interceptor, Gear, and GearBit with correct behaviour
