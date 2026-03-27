@@ -4,9 +4,8 @@ A web-based digital implementation of [Turing Tumble](https://www.turingtumble.c
 
 Built with TypeScript, Svelte 5, and SVG rendering.
 
-**[Video Demo](https://youtu.be/XXXXX)**
+**[Video Demo]([https://youtu.be/C9eKqGsn-y8])**
 
-![Screenshot of the application](docs/screenshot.png)
 
 ## Features
 
